@@ -1,0 +1,2900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTGD Result Processing System — SSC CAPFs 2025</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0D0F14;
+    --ink2: #3A3D47;
+    --ink3: #6B6F7C;
+    --ink4: #9EA3B0;
+    --paper: #F7F6F2;
+    --surface: #FFFFFF;
+    --surface2: #F2F1ED;
+    --surface3: #E8E7E1;
+    --accent: #1A4FD6;
+    --accent2: #0D3AB5;
+    --accent-bg: #EBF0FD;
+    --green: #1A7A4A;
+    --green-bg: #E8F5EE;
+    --red: #C0392B;
+    --red-bg: #FDECEA;
+    --amber: #B45309;
+    --amber-bg: #FEF3C7;
+    --blue: #1A4FD6;
+    --blue-bg: #EBF0FD;
+    --purple: #6D28D9;
+    --purple-bg: #EDE9FE;
+    --border: #E0DFD9;
+    --border2: #CCCBC4;
+    --shadow-sm: 0 1px 3px rgba(13,15,20,.06), 0 1px 2px rgba(13,15,20,.04);
+    --shadow: 0 4px 16px rgba(13,15,20,.08), 0 2px 6px rgba(13,15,20,.04);
+    --shadow-lg: 0 16px 48px rgba(13,15,20,.12), 0 4px 16px rgba(13,15,20,.06);
+    --nav-w: 228px;
+    --topbar-h: 60px;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--paper);
+    display: flex;
+    line-height: 1.5;
+  }
+
+  /* ─── SIDEBAR NAV ─── */
+  .sidebar {
+    width: var(--nav-w);
+    min-width: var(--nav-w);
+    background: var(--ink);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+  }
+  .sidebar-brand {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+  }
+  .brand-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+    font-family: 'Syne', sans-serif;
+    flex-shrink: 0;
+  }
+  .brand-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px; font-weight: 700;
+    color: #fff; letter-spacing: -.01em;
+  }
+  .brand-sub {
+    font-size: 11px; color: rgba(255,255,255,.35); letter-spacing: .02em;
+    padding-left: 42px; margin-top: -2px;
+  }
+
+  .nav-section-label {
+    font-size: 10px; font-weight: 500;
+    color: rgba(255,255,255,.28);
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 18px 20px 6px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px;
+    cursor: pointer;
+    color: rgba(255,255,255,.5);
+    font-size: 13px; font-weight: 400;
+    transition: all .15s;
+    position: relative;
+    border-radius: 0;
+    text-decoration: none;
+    user-select: none;
+  }
+  .nav-item:hover { color: rgba(255,255,255,.85); background: rgba(255,255,255,.05); }
+  .nav-item.active {
+    color: #fff; background: rgba(255,255,255,.1);
+    font-weight: 500;
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute; left: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 20px;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+  }
+  .nav-icon {
+    width: 18px; height: 18px; flex-shrink: 0;
+    opacity: .7;
+  }
+  .nav-item.active .nav-icon { opacity: 1; }
+
+  .nav-badge {
+    margin-left: auto;
+    background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.6);
+    font-size: 10px; font-weight: 500;
+    padding: 1px 7px; border-radius: 20px;
+  }
+  .nav-badge.alert { background: #C0392B; color: #fff; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 14px 20px;
+    border-top: 1px solid rgba(255,255,255,.07);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .user-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.85); }
+  .user-role { font-size: 10px; color: rgba(255,255,255,.35); }
+
+  /* ─── MAIN AREA ─── */
+  .main-area {
+    margin-left: var(--nav-w);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ─── TOP BAR ─── */
+  .topbar {
+    height: var(--topbar-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 28px;
+    gap: 16px;
+    flex-shrink: 0;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-left { flex: 1; min-width: 0; }
+  .topbar-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px; font-weight: 600;
+    color: var(--ink); letter-spacing: -.02em;
+  }
+  .topbar-sub { font-size: 12px; color: var(--ink3); margin-top: 1px; }
+
+  /* ─── CONTENT ─── */
+  .page { display: none; flex: 1; overflow-y: auto; padding: 28px; }
+  .page.active { display: block; }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: var(--radius);
+    font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; border: none; transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--ink2);
+  }
+  .btn-ghost:hover { background: var(--surface2); border-color: var(--border2); }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+    box-shadow: 0 2px 8px rgba(26,79,214,.25);
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  /* ─── STAT CARDS ─── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card:hover { box-shadow: var(--shadow); }
+  .stat-card-accent {
+    position: absolute; top: 0; left: 0;
+    width: 4px; height: 100%;
+  }
+  .stat-label {
+    font-size: 11px; font-weight: 500;
+    color: var(--ink3); letter-spacing: .04em;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px; font-weight: 700;
+    color: var(--ink); letter-spacing: -.03em;
+    line-height: 1;
+  }
+  .stat-delta {
+    font-size: 11px; color: var(--ink4); margin-top: 6px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .stat-delta.up { color: var(--green); }
+  .stat-delta.down { color: var(--red); }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title {
+    font-size: 14px; font-weight: 600; color: var(--ink); letter-spacing: -.01em;
+  }
+  .card-subtitle { font-size: 12px; color: var(--ink3); margin-top: 2px; }
+  .card-body { padding: 20px; }
+
+  /* ─── TABLES ─── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left;
+    font-size: 11px; font-weight: 600;
+    color: var(--ink3); letter-spacing: .05em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 11px 16px;
+    font-size: 13px; color: var(--ink2);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2); }
+  .mono { font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  /* ─── BADGES ─── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 500; white-space: nowrap;
+  }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-red { background: var(--red-bg); color: var(--red); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); }
+  .badge-purple { background: var(--purple-bg); color: var(--purple); }
+  .badge-gray { background: var(--surface2); color: var(--ink3); border: 1px solid var(--border); }
+  .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  /* ─── PIPELINE ─── */
+  .pipeline {
+    display: flex; align-items: stretch;
+    gap: 0; margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .pipeline-stage {
+    flex: 1; padding: 16px 14px;
+    text-align: center; position: relative;
+    border-right: 1px solid var(--border);
+    transition: background .15s; cursor: pointer;
+  }
+  .pipeline-stage:last-child { border-right: none; }
+  .pipeline-stage::after {
+    content: '›';
+    position: absolute; right: -10px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px; color: var(--border2);
+    z-index: 2; background: var(--surface);
+    display: none;
+  }
+  .pipeline-stage.done { background: #F0FAF4; }
+  .pipeline-stage.active-stage { background: var(--blue-bg); }
+  .pipeline-stage.pending { background: var(--surface); }
+  .ps-icon { font-size: 20px; margin-bottom: 6px; }
+  .ps-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 600; color: var(--ink);
+  }
+  .ps-count { font-size: 11px; color: var(--ink3); margin-top: 3px; }
+  .ps-status { margin-top: 8px; }
+
+  /* ─── PROGRESS ─── */
+  .progress-track {
+    height: 6px; background: var(--surface2);
+    border-radius: 3px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 3px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* ─── UPLOAD ZONE ─── */
+  .upload-zone {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius-lg);
+    padding: 36px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    background: var(--surface);
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+  .upload-icon-big {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: var(--surface2);
+    margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    transition: background .2s;
+  }
+  .upload-zone:hover .upload-icon-big { background: var(--accent-bg); }
+  .upload-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .upload-hint { font-size: 12px; color: var(--ink3); margin-top: 5px; }
+
+  /* ─── TABS ─── */
+  .tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .tab-btn {
+    padding: 10px 18px; font-size: 13px; font-weight: 500;
+    color: var(--ink3); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .15s; background: none; border-top: none;
+    border-left: none; border-right: none;
+    margin-bottom: -1px;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .tab-btn:hover { color: var(--ink); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ─── FILTER ROW ─── */
+  .filter-row {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 16px; align-items: center;
+  }
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 7px 12px; flex: 1; min-width: 200px;
+  }
+  .search-box input {
+    border: none; background: transparent; outline: none;
+    font-size: 13px; color: var(--ink); width: 100%;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .search-box input::placeholder { color: var(--ink4); }
+  .filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 7px 10px;
+    font-size: 13px; color: var(--ink2);
+    cursor: pointer; outline: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ─── RULES SECTION ─── */
+  .rule-group { margin-bottom: 24px; }
+  .rule-group-title {
+    font-size: 11px; font-weight: 600;
+    color: var(--ink3); letter-spacing: .06em;
+    text-transform: uppercase; margin-bottom: 10px;
+    padding-left: 2px;
+  }
+  .rule-item {
+    display: flex; align-items: center;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 6px;
+    transition: box-shadow .15s;
+  }
+  .rule-item:hover { box-shadow: var(--shadow-sm); }
+  .rule-info { flex: 1; min-width: 0; }
+  .rule-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .rule-desc { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+  .rule-value {
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    color: var(--accent); background: var(--accent-bg);
+    padding: 2px 8px; border-radius: 4px; margin-right: 14px;
+    white-space: nowrap;
+  }
+
+  /* ─── TOGGLE ─── */
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+  .toggle {
+    position: relative; width: 36px; height: 20px; flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-track {
+    position: absolute; inset: 0;
+    background: var(--border2); border-radius: 10px;
+    cursor: pointer; transition: background .2s;
+  }
+  .toggle-track::before {
+    content: '';
+    position: absolute;
+    height: 14px; width: 14px;
+    left: 3px; top: 3px;
+    background: white; border-radius: 50%;
+    transition: transform .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  }
+  .toggle input:checked + .toggle-track { background: var(--green); }
+  .toggle input:checked + .toggle-track::before { transform: translateX(16px); }
+
+  /* ─── LOG ENTRIES ─── */
+  .log-container {
+    background: var(--ink);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    height: 480px;
+    overflow-y: auto;
+    font-family: 'DM Mono', monospace;
+  }
+  .log-entry {
+    display: flex; gap: 12px;
+    padding: 5px 8px; border-radius: 4px;
+    margin-bottom: 2px; font-size: 12px;
+    transition: background .1s;
+  }
+  .log-entry:hover { background: rgba(255,255,255,.04); }
+  .log-ts { color: rgba(255,255,255,.25); white-space: nowrap; flex-shrink: 0; }
+  .log-level { font-weight: 500; white-space: nowrap; flex-shrink: 0; width: 60px; }
+  .log-msg { color: rgba(255,255,255,.7); }
+  .log-info .log-level { color: #60A5FA; }
+  .log-ok .log-level { color: #34D399; }
+  .log-ok .log-msg { color: rgba(255,255,255,.6); }
+  .log-warn .log-level { color: #FBBF24; }
+  .log-warn .log-msg { color: rgba(255,255,255,.65); }
+  .log-err .log-level { color: #F87171; }
+  .log-err .log-msg { color: #FCA5A5; }
+
+  /* ─── MERIT TABLE RANK ─── */
+  .rank-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    font-size: 12px; font-weight: 700;
+    font-family: 'Syne', sans-serif;
+  }
+  .rank-1 { background: #FEF3C7; color: #92400E; }
+  .rank-2 { background: #F1F5F9; color: #475569; }
+  .rank-3 { background: #FEF3C7; color: #92400E; }
+  .rank-n { background: var(--surface2); color: var(--ink3); font-size: 11px; }
+
+  /* ─── PAGINATION ─── */
+  .pager {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .pager-info { font-size: 12px; color: var(--ink3); }
+  .pager-btns { display: flex; gap: 4px; }
+  .pager-btn {
+    padding: 5px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 500;
+    border: 1px solid var(--border2);
+    background: var(--surface); color: var(--ink2);
+    cursor: pointer; transition: all .12s;
+  }
+  .pager-btn:hover { background: var(--surface2); }
+  .pager-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ─── CHARTS (CSS-based) ─── */
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: flex; align-items: center; gap: 12px; }
+  .bar-label { font-size: 12px; color: var(--ink2); width: 50px; text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+  .bar-val { font-size: 12px; color: var(--ink3); width: 60px; flex-shrink: 0; font-family: 'DM Mono', monospace; }
+
+  /* ─── INFO ALERT BOXES ─── */
+  .alert {
+    padding: 12px 14px; border-radius: var(--radius);
+    font-size: 13px; display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .alert-info { background: var(--blue-bg); color: #1A3D9A; border: 1px solid #BFCEF9; }
+  .alert-success { background: var(--green-bg); color: #155A35; border: 1px solid #A7D9BC; }
+  .alert-warning { background: var(--amber-bg); color: #92400E; border: 1px solid #FDE68A; }
+  .alert-error { background: var(--red-bg); color: #991B1B; border: 1px solid #FCA5A5; }
+  .alert-icon { flex-shrink: 0; font-size: 16px; margin-top: -1px; }
+  .alert-body { flex: 1; }
+  .alert-title { font-weight: 600; }
+  .alert-text { font-size: 12px; margin-top: 2px; opacity: .85; }
+
+  /* ─── VALIDATION STATUS CHIPS ─── */
+  .field-row {
+    display: flex; align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+  .field-row:last-child { border-bottom: none; }
+  .field-name { font-size: 13px; font-weight: 500; color: var(--ink); flex: 1; }
+  .field-type {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--purple); background: var(--purple-bg);
+    padding: 2px 7px; border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .field-note { font-size: 11px; color: var(--ink4); width: 180px; text-align: right; }
+
+  /* ─── SCROLLBARS ─── */
+  .page::-webkit-scrollbar,
+  .log-container::-webkit-scrollbar { width: 5px; }
+  .page::-webkit-scrollbar-track,
+  .log-container::-webkit-scrollbar-track { background: transparent; }
+  .page::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  .log-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
+
+  /* ─── GRID HELPERS ─── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+  .grid-3-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; }
+  .mb-4 { margin-bottom: 4px; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-16 { margin-bottom: 16px; }
+  .mb-20 { margin-bottom: 20px; }
+  .mb-24 { margin-bottom: 24px; }
+  .mt-4 { margin-top: 4px; }
+  .mt-12 { margin-top: 12px; }
+  .mt-16 { margin-top: 16px; }
+  .gap-8 { gap: 8px; }
+
+  /* ─── DONUT (CSS trick) ─── */
+  .donut-wrap {
+    display: flex; align-items: center; gap: 20px;
+  }
+  .donut {
+    width: 90px; height: 90px; border-radius: 50%;
+    flex-shrink: 0; position: relative;
+  }
+  .donut-inner {
+    position: absolute; inset: 16px; background: var(--surface);
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; flex-direction: column;
+  }
+  .donut-pct {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px; font-weight: 700; color: var(--ink);
+    line-height: 1;
+  }
+  .donut-sub { font-size: 9px; color: var(--ink4); }
+  .legend-list { flex: 1; }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 6px; font-size: 12px; color: var(--ink2);
+  }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .legend-val { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink3); }
+
+  /* ─── FORCE ALLOCATION GRID ─── */
+  .force-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  }
+  .force-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+    transition: all .15s; cursor: pointer;
+  }
+  .force-card:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+  .force-code {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px; font-weight: 800; color: var(--accent);
+    letter-spacing: -.02em; line-height: 1;
+  }
+  .force-name { font-size: 11px; font-weight: 500; color: var(--ink3); margin-top: 4px; }
+  .force-vac { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--ink); margin-top: 8px; }
+  .force-bar { margin-top: 8px; }
+
+  /* ─── CANDIDATE DETAIL SIDEBAR ─── */
+  .detail-overlay {
+    position: fixed; inset: 0; background: rgba(13,15,20,.4);
+    z-index: 200; opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .detail-overlay.open { opacity: 1; pointer-events: all; }
+  .detail-drawer {
+    position: fixed; right: 0; top: 0; bottom: 0;
+    width: 440px; background: var(--surface);
+    box-shadow: var(--shadow-lg);
+    z-index: 201; transform: translateX(100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    overflow-y: auto; display: flex; flex-direction: column;
+  }
+  .detail-overlay.open .detail-drawer { transform: translateX(0); }
+  .drawer-header {
+    padding: 20px 22px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 14px;
+    position: sticky; top: 0; background: var(--surface); z-index: 1;
+  }
+  .drawer-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; flex-shrink: 0;
+    font-family: 'Syne', sans-serif;
+  }
+  .drawer-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 2px;
+  }
+  .drawer-id { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink3); }
+  .drawer-close {
+    margin-left: auto; cursor: pointer;
+    width: 28px; height: 28px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink3); font-size: 16px;
+    transition: background .15s;
+  }
+  .drawer-close:hover { background: var(--surface2); }
+  .drawer-body { padding: 20px 22px; flex: 1; }
+  .detail-section { margin-bottom: 20px; }
+  .detail-section-title {
+    font-size: 10px; font-weight: 600; color: var(--ink3);
+    letter-spacing: .06em; text-transform: uppercase;
+    margin-bottom: 10px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-row {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: 5px 0;
+    font-size: 13px;
+  }
+  .detail-key { color: var(--ink3); }
+  .detail-val { color: var(--ink); font-weight: 500; text-align: right; }
+  .stage-timeline { position: relative; padding-left: 18px; }
+  .stage-timeline::before {
+    content: ''; position: absolute; left: 5px; top: 6px; bottom: 6px;
+    width: 1px; background: var(--border);
+  }
+  .timeline-item { position: relative; margin-bottom: 14px; }
+  .timeline-dot {
+    position: absolute; left: -18px; top: 3px;
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 2px var(--border);
+  }
+  .timeline-dot.done { background: var(--green); box-shadow: 0 0 0 2px var(--green); }
+  .timeline-dot.active-dot { background: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .timeline-dot.pending-dot { background: var(--surface); box-shadow: 0 0 0 2px var(--border2); }
+  .timeline-stage { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .timeline-detail { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+
+  /* ─── EXPORT PANEL ─── */
+  .export-panel {
+    display: flex; gap: 10px; align-items: center;
+    padding: 14px 20px;
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+  }
+  .export-label { font-size: 12px; color: var(--ink3); margin-right: 4px; }
+
+  /* ─── PROCESSING STATUS BAR ─── */
+  .processing-bar {
+    background: var(--accent);
+    color: #fff;
+    padding: 10px 20px;
+    font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .processing-bar .spinner {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .processing-bar .progress-track { flex: 1; height: 4px; background: rgba(255,255,255,.25); }
+  .processing-bar .progress-fill { background: #fff; }
+  .hidden { display: none !important; }
+
+  /* ─── NOTIFICATION TOAST ─── */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: var(--ink); color: #fff;
+    padding: 12px 16px; border-radius: var(--radius);
+    font-size: 13px; max-width: 340px;
+    box-shadow: var(--shadow-lg);
+    display: flex; align-items: center; gap: 10px;
+    animation: slideUp .25s ease;
+  }
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.error { border-left: 3px solid var(--red); }
+  .toast.info { border-left: 3px solid var(--accent); }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ─── RESPONSIVE HELPERS ─── */
+  .topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+  /* ─── JSON EDITOR MOCK ─── */
+  .code-block {
+    background: #1E2127; border-radius: var(--radius);
+    padding: 16px; font-family: 'DM Mono', monospace;
+    font-size: 12px; line-height: 1.7; overflow-x: auto;
+    color: #ABB2BF;
+  }
+  .cj-key { color: #E06C75; }
+  .cj-str { color: #98C379; }
+  .cj-num { color: #D19A66; }
+  .cj-bool { color: #56B6C2; }
+  .cj-cmt { color: #5C6370; font-style: italic; }
+
+  /* ─── Enhanced Rules Engine ─── */
+  .rule-group-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .rule-group-title { font-size:12px; font-weight:700; color:var(--ink2); letter-spacing:.04em; text-transform:uppercase; }
+  .rule-count { font-size:10px; font-weight:500; color:var(--ink4); background:var(--surface2); border:1px solid var(--border); padding:2px 8px; border-radius:20px; }
+  .rule-group { margin-bottom:20px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; box-shadow:var(--shadow-sm); }
+  .rule-item { display:flex; align-items:center; gap:10px; padding:9px 10px; background:var(--surface2); border-radius:var(--radius); margin-bottom:6px; border:1px solid var(--border); transition:box-shadow .15s; }
+  .rule-item:hover { box-shadow:var(--shadow-sm); }
+  .rule-item:last-child { margin-bottom:0; }
+  .rule-info { flex:1; min-width:0; }
+  .rule-name { font-size:13px; font-weight:500; color:var(--ink); cursor:default; border-radius:3px; transition:background .1s; }
+  .rule-name:hover,.rule-desc:hover,.rule-value:hover { background:var(--accent-bg); }
+  .rule-desc { font-size:11px; color:var(--ink3); margin-top:2px; cursor:default; }
+  .rule-value { min-width:72px; font-size:12px; font-weight:600; color:var(--accent); font-family:'DM Mono',monospace; text-align:center; background:var(--accent-bg); border:1px solid var(--border); border-radius:var(--radius); padding:4px 8px; cursor:default; flex-shrink:0; }
+  .rule-del-btn { width:22px; height:22px; border:none; background:transparent; color:var(--ink4); cursor:pointer; font-size:12px; border-radius:4px; display:flex; align-items:center; justify-content:center; transition:background .15s,color .15s; flex-shrink:0; padding:0; }
+  .rule-del-btn:hover { background:var(--red-bg); color:var(--red); }
+  .editable-name, .editable-desc, .editable-val { border-radius:3px; }
+  .editable-name[contenteditable='true'], .editable-desc[contenteditable='true'], .editable-val[contenteditable='true'] { cursor:text; }
+  .new-rule-flash { animation: flashIn .8s ease; }
+  @keyframes flashIn { 0%{background:var(--blue-bg);transform:translateY(-4px)} 100%{background:var(--surface2);transform:translateY(0)} }
+
+  /* ─── Upload Zone ─── */
+  .upload-zone { border:2px dashed var(--border2); border-radius:var(--radius-lg); padding:32px 20px; text-align:center; cursor:pointer; transition:border-color .15s,background .15s; }
+  .upload-zone:hover,.upload-zone.drag-over { border-color:var(--accent); background:var(--accent-bg); }
+  .progress-track { background:var(--surface3); border-radius:20px; height:4px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:20px; transition:width .3s ease; }
+
+  /* ─── Badge extras ─── */
+  .badge-amber { background:var(--amber-bg); color:var(--amber); }
+  .badge-purple { background:var(--purple-bg); color:var(--purple); }
+  .badge-gray { background:var(--surface3); color:var(--ink3); }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-brand">
+      <div class="brand-icon">CR</div>
+      <div class="brand-name">ResultPro</div>
+    </div>
+    <div class="brand-sub">CTGD 2025 · CAPFs (GD) Result System</div>
+  </div>
+
+  <div class="nav-section-label">Overview</div>
+  <div class="nav-item active" onclick="navigate('dashboard', this)">
+    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>
+    Dashboard
+  </div>
+
+  <div class="nav-section-label">Data Management</div>
+  <div class="nav-item" onclick="navigate('candidates', this)">
+    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="6" r="3"/><path d="M2 17c0-3.3 2.7-6 6-6"/><rect x="12" y="12" width="7" height="5" rx="1.5"/><path d="M15.5 12V10.5a1.5 1.5 0 00-3 0V12"/></svg>
+    Candidates
+    <span class="nav-badge">2.4L</span>
+  </div>
+  <div class="nav-item" onclick="navigate('upload', this)">
+    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 13V4M6 7l4-4 4 4"/><path d="M4 16h12"/></svg>
+    Result Upload
+    <span class="nav-badge alert">82</span>
+  </div>
+
+  <div class="nav-section-label">Processing</div>
+  <div class="nav-item" onclick="navigate('rules', this)">
+    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2v4M10 14v4M4.22 4.22l2.83 2.83M12.95 12.95l2.83 2.83M2 10h4M14 10h4M4.22 15.78l2.83-2.83M12.95 7.05l2.83-2.83"/></svg>
+    Validation Rules
+  </div>
+  <div class="nav-item" onclick="navigate('merit', this)">
+    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 17h4M10 13V7"/><circle cx="10" cy="5" r="2"/><path d="M6 13h8"/></svg>
+    Merit List
+  </div>
+  <div class="nav-item" onclick="navigate('allocation', this)">
+    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="16" height="12" rx="2"/><path d="M8 4v12M14 4v12M2 10h16"/></svg>
+    Force Allocation
+  </div>
+
+  <div class="nav-section-label">System</div>
+  <div class="nav-item" onclick="navigate('logs', this)">
+    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 7h6M7 10h6M7 13h4"/></svg>
+    Logs & Audit
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="user-avatar">SA</div>
+    <div class="user-info">
+      <div class="user-name">Super Admin</div>
+      <div class="user-role">Full access · v2.5.1</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════ MAIN ═══════════════════════ -->
+<div class="main-area">
+
+  <!-- Processing status bar (hidden by default) -->
+  <div class="processing-bar hidden" id="proc-bar">
+    <div class="spinner"></div>
+    <span id="proc-msg">Running result processing pipeline…</span>
+    <div class="progress-track"><div class="progress-fill" id="proc-fill" style="width:0%"></div></div>
+    <span id="proc-pct" style="font-size:12px;opacity:.8">0%</span>
+  </div>
+
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <div class="page active" id="page-dashboard">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Dashboard</div>
+        <div class="topbar-sub">Last processed: 20 Apr 2026 · Vacancy table: 405 slots · 8 forces</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm">↓ Export Report</button>
+        <button class="btn btn-primary btn-sm" onclick="runProcessing()">▶ Run Processing</button>
+      </div>
+    </div>
+    <div class="page" id="page-dashboard-inner" style="display:block; overflow:visible; padding:28px;">
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-card-accent" style="background:var(--accent)"></div>
+        <div class="stat-label">Total Vacancies</div>
+        <div class="stat-value">1,304</div>
+        <div class="stat-delta">Across 8 forces · 28 states/UTs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-accent" style="background:var(--green)"></div>
+        <div class="stat-label">Allocated</div>
+        <div class="stat-value">1,024</div>
+        <div class="stat-delta up">↑ 78.5% fill rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-accent" style="background:#F59E0B"></div>
+        <div class="stat-label">Left / Pending</div>
+        <div class="stat-value">280</div>
+        <div class="stat-delta">21.5% vacancies unfilled</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-accent" style="background:var(--red)"></div>
+        <div class="stat-label">Female Vacancies</div>
+        <div class="stat-value">966</div>
+        <div class="stat-delta down">Male: 338 · Gender code 1=F, 2=M</div>
+      </div>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="pipeline mb-24">
+      <div class="pipeline-stage done">
+        <div class="ps-icon">✅</div>
+        <div class="ps-name">CBE</div>
+        <div class="ps-count">2,43,817 appeared</div>
+        <div class="ps-status"><span class="badge badge-green">Complete</span></div>
+      </div>
+      <div class="pipeline-stage done">
+        <div class="ps-icon">✅</div>
+        <div class="ps-name">PST</div>
+        <div class="ps-count">1,91,200 assessed</div>
+        <div class="ps-status"><span class="badge badge-green">Complete</span></div>
+      </div>
+      <div class="pipeline-stage done">
+        <div class="ps-icon">✅</div>
+        <div class="ps-name">PET</div>
+        <div class="ps-count">61,820 tested</div>
+        <div class="ps-status"><span class="badge badge-green">Complete</span></div>
+      </div>
+      <div class="pipeline-stage active-stage">
+        <div class="ps-icon">⏳</div>
+        <div class="ps-name">DME / RME</div>
+        <div class="ps-count">38,150 / 48,210</div>
+        <div class="ps-status"><span class="badge badge-amber">In Progress</span></div>
+      </div>
+      <div class="pipeline-stage pending">
+        <div class="ps-icon">🔒</div>
+        <div class="ps-name">DV</div>
+        <div class="ps-count">Pending</div>
+        <div class="ps-status"><span class="badge badge-gray">Pending</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2 mb-24">
+      <!-- Category breakdown -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Category-wise breakdown</div>
+            <div class="card-subtitle">CBE qualified — 1,89,334 candidates</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="donut-wrap mb-16">
+            <div class="donut" style="background:conic-gradient(#6D28D9 0% 48%, #C0392B 48% 79%, #F59E0B 79% 86%, #1A7A4A 86% 92%, #1A4FD6 92% 98%, #0F766E 98% 100%)">
+              <div class="donut-inner">
+                <div class="donut-pct">78.5%</div>
+                <div class="donut-sub">Fill rate</div>
+              </div>
+            </div>
+            <div class="legend-list">
+              <div class="legend-item"><div class="legend-dot" style="background:#6D28D9"></div>SC<div class="legend-val">633</div></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#C0392B"></div>EWS<div class="legend-val">397</div></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#1A4FD6"></div>UR<div class="legend-val">85</div></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#F59E0B"></div>ESM<div class="legend-val">88</div></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#1A7A4A"></div>ST<div class="legend-val">79</div></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#0F766E"></div>OBC<div class="legend-val">22</div></div>
+            </div>
+          </div>
+          <div class="bar-chart">
+            <div class="bar-row"><div class="bar-label">SC</div><div class="bar-track"><div class="bar-fill" style="width:48%;background:#6D28D9"></div></div><div class="bar-val">633</div></div>
+            <div class="bar-row"><div class="bar-label">EWS</div><div class="bar-track"><div class="bar-fill" style="width:30%;background:#C0392B"></div></div><div class="bar-val">397</div></div>
+            <div class="bar-row"><div class="bar-label">ESM</div><div class="bar-track"><div class="bar-fill" style="width:7%;background:#F59E0B"></div></div><div class="bar-val">88</div></div>
+            <div class="bar-row"><div class="bar-label">UR</div><div class="bar-track"><div class="bar-fill" style="width:6%;background:#1A4FD6"></div></div><div class="bar-val">85</div></div>
+            <div class="bar-row"><div class="bar-label">ST</div><div class="bar-track"><div class="bar-fill" style="width:6%;background:#1A7A4A"></div></div><div class="bar-val">79</div></div>
+            <div class="bar-row"><div class="bar-label">OBC</div><div class="bar-track"><div class="bar-fill" style="width:2%;background:#0F766E"></div></div><div class="bar-val">22</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage status card -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Stage upload status</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Stage</th><th>Records</th><th>Errors</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>Candidate Master</td><td class="mono">3 (sample)</td><td class="mono" style="color:var(--green)">0</td><td><span class="badge badge-green">Loaded</span></td></tr>
+              <tr><td>Vacancy Table</td><td class="mono">405 slots</td><td class="mono" style="color:var(--green)">0</td><td><span class="badge badge-green">Complete</span></td></tr>
+              <tr><td>State Master</td><td class="mono">754 districts</td><td class="mono" style="color:var(--green)">0</td><td><span class="badge badge-green">Complete</span></td></tr>
+              <tr><td>result Processing</td><td class="mono">1,304 slots</td><td class="mono" style="color:var(--amber)">280</td><td><span class="badge badge-amber">In Progress</span></td></tr>
+              <tr><td>Final Merit List</td><td class="mono">—</td><td class="mono">—</td><td><span class="badge badge-gray">Pending</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-body mt-12">
+          <div class="alert alert-warning">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-body">
+              <div class="alert-title">Action required</div>
+              <div class="alert-text">280 vacancy slots still unfilled (left_vacancy &gt; 0). Run processing to attempt allocation or review min_marks cutoffs.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Force vacancy table -->
+    <div class="card mb-24">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Force-wise vacancy summary</div>
+          <div class="card-subtitle">Total: 1,304 vacancies · Allocated: 1,024 · Left: 280 · From ctgd2025_vacancy_table.xlsx</div>
+        </div>
+        <button class="btn btn-ghost btn-sm">Export CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Force</th><th>Total Vacancies</th><th>UR</th><th>OBC</th><th>SC</th><th>ST</th><th>EWS</th><th>ESM</th><th>Post Codes</th><th>Fill %</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><strong>BSF</strong></td><td class="mono">471</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td><div style="display:flex;align-items:center;gap:6px"><div class="progress-track" style="width:60px;height:6px"><div class="progress-fill" style="width:78%;background:var(--green)"></div></div><span style="font-size:11px;color:var(--green)">78%</span></div></td><td><span class="badge badge-green">Active</span></td></tr>
+            <tr><td><strong>CISF</strong></td><td class="mono">268</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td><div style="display:flex;align-items:center;gap:6px"><div class="progress-track" style="width:60px;height:6px"><div class="progress-fill" style="width:82%;background:var(--green)"></div></div><span style="font-size:11px;color:var(--green)">82%</span></div></td><td><span class="badge badge-green">Active</span></td></tr>
+            <tr><td><strong>CRPF</strong></td><td class="mono">151</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td><div style="display:flex;align-items:center;gap:6px"><div class="progress-track" style="width:60px;height:6px"><div class="progress-fill" style="width:75%;background:var(--amber)"></div></div><span style="font-size:11px;color:var(--amber)">75%</span></div></td><td><span class="badge badge-amber">Partial</span></td></tr>
+            <tr><td><strong>ITBP</strong></td><td class="mono">158</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td><div style="display:flex;align-items:center;gap:6px"><div class="progress-track" style="width:60px;height:6px"><div class="progress-fill" style="width:80%;background:var(--green)"></div></div><span style="font-size:11px;color:var(--green)">80%</span></div></td><td><span class="badge badge-green">Active</span></td></tr>
+            <tr><td><strong>SSB</strong></td><td class="mono">152</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td><div style="display:flex;align-items:center;gap:6px"><div class="progress-track" style="width:60px;height:6px"><div class="progress-fill" style="width:76%;background:var(--amber)"></div></div><span style="font-size:11px;color:var(--amber)">76%</span></div></td><td><span class="badge badge-amber">Partial</span></td></tr>
+            <tr><td><strong>Assam Rifles (AR)</strong></td><td class="mono">69</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td><div style="display:flex;align-items:center;gap:6px"><div class="progress-track" style="width:60px;height:6px"><div class="progress-fill" style="width:85%;background:var(--green)"></div></div><span style="font-size:11px;color:var(--green)">85%</span></div></td><td><span class="badge badge-green">Active</span></td></tr>
+            <tr><td><strong>NCB</strong></td><td class="mono">2</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td><div style="display:flex;align-items:center;gap:6px"><div class="progress-track" style="width:60px;height:6px"><div class="progress-fill" style="width:50%;background:var(--amber)"></div></div><span style="font-size:11px;color:var(--amber)">50%</span></div></td><td><span class="badge badge-amber">Partial</span></td></tr>
+            <tr><td><strong>SSF</strong></td><td class="mono">33</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td><div style="display:flex;align-items:center;gap:6px"><div class="progress-track" style="width:60px;height:6px"><div class="progress-fill" style="width:90%;background:var(--green)"></div></div><span style="font-size:11px;color:var(--green)">90%</span></div></td><td><span class="badge badge-green">Active</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    </div><!-- end inner -->
+  </div>
+
+  <!-- ══════════ CANDIDATES ══════════ -->
+  <div class="page" id="page-candidates">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Candidate Management</div>
+        <div class="topbar-sub">Candidates keyed by registrationNo · rollno · state_ut_code_considered · Click any row to view details</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm">↓ Download Template</button>
+        <button class="btn btn-primary btn-sm" onclick="simulateUpload('cand')">⬆ Upload CSV</button>
+      </div>
+    </div>
+    <div style="padding:28px">
+
+    <div id="cand-upload-section" class="mb-24">
+      <div class="upload-zone" onclick="simulateUpload('cand')">
+        <div class="upload-icon-big">📄</div>
+        <div class="upload-title">Drop Candidate_Master.csv here</div>
+        <div class="upload-hint">Required: registrationNo, rollno, category (UR/OBC/SC/ST/EWS/ESM), gender (1=F,2=M), state_ut_code_considered, total_marks_new, dob (DD-MM-YYYY) · Max 50 MB</div>
+      </div>
+      <div id="cand-progress" class="hidden" style="margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);margin-bottom:8px">
+          <span>📄 Candidate_Master_2025.csv</span>
+          <span id="cand-pct" style="font-family:'DM Mono',monospace">0%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="cand-bar" style="width:0%;background:var(--accent)"></div></div>
+        <div id="cand-status" style="font-size:11px;color:var(--ink3);margin-top:6px">Initialising…</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Candidate list</div>
+        <button class="btn btn-ghost btn-sm">Export filtered</button>
+      </div>
+      <div style="padding:14px 16px; border-bottom:1px solid var(--border)">
+        <div class="filter-row">
+          <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="m15 15 4 4"/></svg>
+            <input placeholder="Search name, ID, roll number…" oninput="filterTable(this.value)">
+          </div>
+          <select class="filter-select" onchange="filterTable('')"><option value="">All categories</option><option>UR</option><option>OBC</option><option>SC</option><option>ST</option><option>EWS</option><option>ESM</option></select>
+          <select class="filter-select"><option>All genders</option><option>Male</option><option>Female</option></select>
+          <select class="filter-select"><option>All states</option><option>Delhi</option><option>UP</option><option>Bihar</option><option>Rajasthan</option><option>Uttarakhand</option><option>Haryana</option></select>
+          <select class="filter-select"><option>All provisions</option><option>Cleared</option><option>TU</option><option>Debarred</option><option>Withheld</option><option>Suspected</option></select>
+        </div>
+      </div>
+      <div class="table-wrap" id="cand-table-wrap">
+        <table id="cand-table">
+          <thead><tr>
+            <th>Reg No</th><th>Roll No</th><th>Name</th><th>Category</th><th>Gender</th><th>State</th>
+            <th>Norm. Marks</th><th>NCC Marks</th><th>Total Marks</th><th>DOB</th>
+            <th>PST/PET</th><th>DME</th><th>To Be Considered</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="cand-tbody">
+            <tr onclick="openDrawer(0)" style="cursor:pointer">
+              <td class="mono">10012665754</td><td class="mono">1010001491</td><td><strong>KESHAV SHARMA</strong></td>
+              <td><span class="badge badge-gray">—</span></td><td>M</td><td>Jammu &amp; Kashmir · Kathua</td>
+              <td class="mono">121.024</td><td class="mono">0.00</td><td class="mono"><strong>121.024</strong></td><td class="mono">24-01-2006</td>
+              <td><span class="badge badge-green">Qualified</span></td>
+              <td><span class="badge badge-gray">—</span></td>
+              <td><span class="badge badge-red">No</span></td>
+              <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openDrawer(0)">View →</button></td>
+            </tr>
+            <tr onclick="openDrawer(1)" style="cursor:pointer">
+              <td class="mono">10019664893</td><td class="mono">2411024765</td><td><strong>VIKASH KASWAN</strong></td>
+              <td><span class="badge badge-amber">OBC</span></td><td>M</td><td>Rajasthan · Bikaner</td>
+              <td class="mono">125.133</td><td class="mono">0.00</td><td class="mono"><strong>125.133</strong></td><td class="mono">23-10-2005</td>
+              <td><span class="badge badge-green">Qualified</span></td>
+              <td><span class="badge badge-green">Fit</span></td>
+              <td><span class="badge badge-green">Yes</span></td>
+              <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openDrawer(1)">View →</button></td>
+            </tr>
+            <tr onclick="openDrawer(2)" style="cursor:pointer">
+              <td class="mono">10017994504</td><td class="mono">5105000184</td><td><strong>HIMJYOTI MAZUMDAR</strong></td>
+              <td><span class="badge badge-purple">SC</span></td><td>M</td><td>Assam · Morigaon</td>
+              <td class="mono">90.062</td><td class="mono">0.00</td><td class="mono"><strong>90.062</strong></td><td class="mono">07-09-2001</td>
+              <td><span class="badge badge-green">Qualified</span></td>
+              <td><span class="badge badge-green">Fit</span></td>
+              <td><span class="badge badge-green">Yes</span></td>
+              <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openDrawer(2)">View →</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <div class="pager-info">Showing 3 of 3 candidates (sample data · full upload via Excel)</div>
+        <div class="pager-btns">
+          <button class="pager-btn active">1</button>
+          <button class="pager-btn">2</button>
+          <button class="pager-btn">3</button>
+          <span style="font-size:12px;color:var(--ink4);margin:0 4px">…</span>
+          <button class="pager-btn">30,477</button>
+          <button class="pager-btn">›</button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <!-- ══════════ RESULT UPLOAD ══════════ -->
+  <div class="page" id="page-upload">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Stage-wise Result Upload</div>
+        <div class="topbar-sub">Map by candidate_unique_id · All stages must be uploaded before final processing</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm">Validate All</button>
+        <button class="btn btn-primary btn-sm" onclick="runProcessing()">▶ Run Processing</button>
+      </div>
+    </div>
+    <div style="padding:28px">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'tc-cbe')">CBE Marks</button>
+        <button class="tab-btn" onclick="switchTab(this,'tc-pst')">PST</button>
+        <button class="tab-btn" onclick="switchTab(this,'tc-pet')">PET</button>
+        <button class="tab-btn" onclick="switchTab(this,'tc-dme')">DME / RME</button>
+        <button class="tab-btn" onclick="switchTab(this,'tc-dv')">DV</button>
+      </div>
+
+      <!-- CBE -->
+      <div id="tc-cbe" class="tab-content active">
+        <div class="alert alert-success mb-20"><div class="alert-icon">✅</div><div class="alert-body"><div class="alert-title">Upload complete</div><div class="alert-text">3 sample records loaded · 0 ID duplicates · registrationNo validated · 1 missing category (row 0)</div></div></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Field schema validation</div><span class="badge badge-green">All fields OK</span></div>
+            <div style="padding:8px 16px">
+              <div class="field-row"><div class="field-name">registrationNo</div><div class="field-type">BIGINT PK</div><div class="field-note" style="color:var(--green)">✓ Unique ID matched</div></div>
+              <div class="field-row"><div class="field-name">normalized_score</div><div class="field-type">DECIMAL(12,5)</div><div class="field-note" style="color:var(--green)">✓ e.g. 121.02384</div></div>
+              <div class="field-row"><div class="field-name">parta_gi</div><div class="field-type">DECIMAL</div><div class="field-note" style="color:var(--green)">✓ Part-A GI — tie-break 1</div></div>
+              <div class="field-row"><div class="field-name">partb_ga</div><div class="field-type">DECIMAL</div><div class="field-note" style="color:var(--green)">✓ Part-B GA — tie-break 2</div></div>
+              <div class="field-row"><div class="field-name">ncc_marks_new</div><div class="field-type">DECIMAL</div><div class="field-note" style="color:var(--ink3)">Numeric bonus (0 if none)</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Processing summary</div></div>
+            <div class="card-body">
+              <div class="detail-row"><div class="detail-key">Total records loaded</div><div class="detail-val mono">3 (sample)</div></div>
+              <div class="detail-row"><div class="detail-key">candidature_status = Q (Qualified)</div><div class="detail-val mono">2 of 3</div></div>
+              <div class="detail-row"><div class="detail-key">total_marks_new field</div><div class="detail-val mono">normalized_score + ncc_marks_new</div></div>
+              <div class="detail-row"><div class="detail-key">Marks range (sample)</div><div class="detail-val mono">90.062 – 125.133</div></div>
+              <div class="detail-row"><div class="detail-key">ncc_marks_new (sample)</div><div class="detail-val mono">0.00 for all 3</div></div>
+              <div class="detail-row"><div class="detail-key">to_be_considered = Yes</div><div class="detail-val mono" style="color:var(--green)">2 candidates</div></div>
+              <div class="detail-row"><div class="detail-key">category not set (row 0)</div><div class="detail-val mono" style="color:var(--amber)">1 — needs review</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PST -->
+      <div id="tc-pst" class="tab-content">
+        <div class="alert alert-warning mb-20"><div class="alert-icon">⚠️</div><div class="alert-body"><div class="alert-title">12 records need attention</div><div class="alert-text">PHTR_code submitted as boolean (true/false) instead of specific relaxation code. Correct before processing.</div></div></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title">PST field schema</div><span class="badge badge-amber">12 warnings</span></div>
+            <div style="padding:8px 16px">
+              <div class="field-row"><div class="field-name">registrationNo</div><div class="field-type">BIGINT PK</div><div class="field-note" style="color:var(--green)">✓ All records matched</div></div>
+              <div class="field-row"><div class="field-name">height_cm</div><div class="field-type">Float</div><div class="field-note" style="color:var(--green)">✓ 100–250 range</div></div>
+              <div class="field-row"><div class="field-name">chest_unexpanded_cm</div><div class="field-type">Float?</div><div class="field-note" style="color:var(--green)">✓ Male only</div></div>
+              <div class="field-row"><div class="field-name">chest_expanded_cm</div><div class="field-type">Float?</div><div class="field-note" style="color:var(--green)">✓ Expansion ≥5cm</div></div>
+              <div class="field-row"><div class="field-name">phtr_code</div><div class="field-type">Enum</div><div class="field-note" style="color:var(--amber)">⚠ 12 boolean values</div></div>
+              <div class="field-row"><div class="field-name">final_pet_pst_status</div><div class="field-type">VARCHAR</div><div class="field-note" style="color:var(--green)">✓ Qualified/Not Qualified/TU</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Upload new PST file</div></div>
+            <div class="card-body">
+              <div class="upload-zone" onclick="simulateUpload('pst')" style="padding:20px">
+                <div class="upload-title" style="font-size:13px">Re-upload corrected PST CSV</div>
+                <div class="upload-hint">Fix PHTR_code to specific codes (e.g. HRC01, HRC02)</div>
+              </div>
+              <div id="pst-progress" class="hidden" style="margin-top:10px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);margin-bottom:6px"><span>PST_Result_corrected.csv</span><span id="pst-pct" class="mono">0%</span></div>
+                <div class="progress-track"><div class="progress-fill" id="pst-bar" style="width:0%;background:var(--accent)"></div></div>
+                <div id="pst-status" style="font-size:11px;color:var(--ink3);margin-top:5px">Initialising…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PET -->
+      <div id="tc-pet" class="tab-content">
+        <div class="alert alert-success mb-20"><div class="alert-icon">✅</div><div class="alert-body"><div class="alert-title">PET upload complete</div><div class="alert-text">61,820 records · 0 errors · ESM exemptions auto-applied: 4,210 candidates</div></div></div>
+        <div class="card"><div class="card-header"><div class="card-title">PET summary</div></div>
+          <div class="card-body">
+            <div class="detail-row"><div class="detail-key">Total PET records</div><div class="detail-val mono">61,820</div></div>
+            <div class="detail-row"><div class="detail-key">PASS</div><div class="detail-val mono" style="color:var(--green)">48,210</div></div>
+            <div class="detail-row"><div class="detail-key">FAIL</div><div class="detail-val mono" style="color:var(--red)">9,400</div></div>
+            <div class="detail-row"><div class="detail-key">TU (pregnant)</div><div class="detail-val mono" style="color:var(--amber)">210</div></div>
+            <div class="detail-row"><div class="detail-key">EXEMPT (ESM)</div><div class="detail-val mono" style="color:var(--purple)">4,000</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DME -->
+      <div id="tc-dme" class="tab-content">
+        <div class="alert alert-error mb-20"><div class="alert-icon">❌</div><div class="alert-body"><div class="alert-title">82 ID mismatches detected</div><div class="alert-text">IDs not found in candidate master. Ensure registrationNo in DME file matches registrationNo in candidate master exactly. Check field: dme_status values (Fit/Unfit).</div></div></div>
+        <div class="grid-2">
+          <div class="card"><div class="card-header"><div class="card-title">DME upload progress</div><span class="badge badge-amber">Partial</span></div>
+            <div class="card-body">
+              <div style="margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);margin-bottom:6px"><span>DME records uploaded</span><span class="mono">38,150 / 48,210</span></div>
+                <div class="progress-track"><div class="progress-fill" style="width:79%;background:var(--accent)"></div></div>
+              </div>
+              <div class="detail-row"><div class="detail-key">FIT</div><div class="detail-val mono" style="color:var(--green)">34,200</div></div>
+              <div class="detail-row"><div class="detail-key">UNFIT → RME</div><div class="detail-val mono" style="color:var(--amber)">2,340</div></div>
+              <div class="detail-row"><div class="detail-key">UNFIT → Final</div><div class="detail-val mono" style="color:var(--red)">1,610</div></div>
+              <div class="detail-row"><div class="detail-key">ID mismatches (blocked)</div><div class="detail-val mono" style="color:var(--red)">82</div></div>
+              <div class="detail-row"><div class="detail-key">Pending upload</div><div class="detail-val mono">10,060</div></div>
+            </div>
+          </div>
+          <div class="card"><div class="card-header"><div class="card-title">Upload corrected DME file</div></div>
+            <div class="card-body">
+              <div class="upload-zone" onclick="simulateUpload('dme')" style="padding:20px">
+                <div class="upload-title" style="font-size:13px">Upload DME_Result_corrected.csv</div>
+                <div class="upload-hint">Fix 82 mismatched IDs first</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DV -->
+      <div id="tc-dv" class="tab-content">
+        <div class="alert alert-info mb-20"><div class="alert-icon">ℹ️</div><div class="alert-body"><div class="alert-title">DV upload locked</div><div class="alert-text">Complete DME/RME stage before uploading DV results. 10,060 DME records still pending.</div></div></div>
+        <div class="card">
+          <div class="card-body" style="text-align:center;padding:40px;color:var(--ink3)">
+            <div style="font-size:40px;margin-bottom:12px">🔒</div>
+            <div style="font-size:14px;font-weight:500;color:var(--ink2)">DV upload awaiting DME completion</div>
+            <div style="font-size:12px;margin-top:6px">Once DME is finalised, DV CSV upload will be enabled here</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ VALIDATION RULES ══════════ -->
+  <!-- ══════════ ENHANCED VALIDATION RULES ══════════ -->
+  <div class="page" id="page-rules">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Validation Rules Engine</div>
+        <div class="topbar-sub">Fully Editable · JSON-driven · Category-aware · Add/Edit/Delete rules · Export to PDF & Word</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="switchRuleTab('visual')">Visual Editor</button>
+        <button class="btn btn-ghost btn-sm" onclick="switchRuleTab('json')">JSON View</button>
+        <button class="btn btn-ghost btn-sm" onclick="switchRuleTab('missing')">⚠ Missing Rules</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportRulesToWord()">⬇ Export Word</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportRulesToPDF()">⬇ Export PDF</button>
+        <button class="btn btn-primary btn-sm" onclick="saveAllRules()">Save & Apply</button>
+      </div>
+    </div>
+    <div style="padding:28px">
+
+      <!-- ─── Add New Rule Bar ─── -->
+      <div id="add-rule-bar" style="background:var(--accent-bg);border:1.5px dashed var(--accent);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:20px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Rule Name *</div>
+          <input id="new-rule-name" placeholder="e.g. Age cutoff — must be 18-23" style="width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;outline:none">
+        </div>
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Description</div>
+          <input id="new-rule-desc" placeholder="Brief explanation of this rule" style="width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;outline:none">
+        </div>
+        <div style="width:110px">
+          <div style="font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Value *</div>
+          <input id="new-rule-value" placeholder="e.g. 35%" style="width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;outline:none">
+        </div>
+        <div style="width:130px">
+          <div style="font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Group</div>
+          <select id="new-rule-group" style="width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;background:var(--surface)">
+            <option value="cbe">CBE Cutoff</option>
+            <option value="ncc">NCC Bonus</option>
+            <option value="tiebreak">Tie-break</option>
+            <option value="pst">Physical Standards</option>
+            <option value="special">Special Provisions</option>
+            <option value="eligibility">Eligibility</option>
+            <option value="age">Age Rules</option>
+            <option value="shortlist">Shortlisting Ratios</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="addNewRule()">+ Add Rule</button>
+      </div>
+
+      <!-- ─── VISUAL EDITOR ─── -->
+      <div id="rules-visual">
+        <div class="grid-2">
+          <!-- LEFT COLUMN -->
+          <div>
+            <div class="rule-group" id="rg-cbe">
+              <div class="rule-group-header">
+                <div class="rule-group-title">CBE Cutoff Marks</div>
+                <span class="rule-count" id="cnt-cbe">3 rules</span>
+              </div>
+              <div id="rules-cbe">
+                <div class="rule-item" data-id="cbe-ur" data-group="cbe">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">UR / EWS / ESM minimum qualifying %</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Applied to normalised CBE marks only (no NCC bonus at cutoff stage)</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">35%</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="cbe-obc" data-group="cbe">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">OBC minimum qualifying %</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Separate cutoff for OBC candidates</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">33%</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="cbe-sc" data-group="cbe">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">SC / ST minimum qualifying %</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">SC and ST reserved categories cutoff</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">33%</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="rule-group" id="rg-ncc">
+              <div class="rule-group-header">
+                <div class="rule-group-title">NCC Bonus Marks</div>
+                <span class="rule-count" id="cnt-ncc">4 rules</span>
+              </div>
+              <div id="rules-ncc">
+                <div class="rule-item" data-id="ncc-c" data-group="ncc">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">NCC 'C' Certificate bonus</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">5% of max marks (100); added after cutoff clearance; not for ESM</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">+5 marks</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="ncc-b" data-group="ncc">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">NCC 'B' Certificate bonus</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">3% of max marks; added provisionally until DV</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">+3 marks</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="ncc-a" data-group="ncc">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">NCC 'A' Certificate bonus</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">2% of max marks; revoked at DV if certificate not produced</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">+2 marks</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="ncc-esm-block" data-group="ncc">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Block NCC bonus for ESM candidates</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">ESM candidates are NOT eligible for NCC bonus marks</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">TRUE</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="rule-group" id="rg-tiebreak">
+              <div class="rule-group-header">
+                <div class="rule-group-title">Tie-Break Sequence</div>
+                <span class="rule-count" id="cnt-tiebreak">4 rules</span>
+              </div>
+              <div id="rules-tiebreak">
+                <div class="rule-item" data-id="tb-1" data-group="tiebreak">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Priority 1 — Part A (GI & Reasoning)</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Higher parta_gi score wins; field from candidate CBE data</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">1st</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="tb-2" data-group="tiebreak">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Priority 2 — Part B (GK/GA)</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Higher partb_ga score wins; applied only if Tie-1 is still tied</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">2nd</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="tb-3" data-group="tiebreak">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Priority 3 — DOB ascending (older preferred)</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Field: dob (DD-MM-YYYY); older candidate placed higher</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">3rd</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="tb-4" data-group="tiebreak">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Priority 4 — Name A→Z (alphabetical)</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Final tiebreak; alphabetical order of candidate name</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">4th</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="rule-group" id="rg-age">
+              <div class="rule-group-header">
+                <div class="rule-group-title">Age Eligibility Rules</div>
+                <span class="rule-count" id="cnt-age">5 rules</span>
+              </div>
+              <div id="rules-age">
+                <div class="rule-item" data-id="age-min" data-group="age">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Minimum age — 18 years</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">As on the cut-off date (01.08.2021 for 2021; updated per cycle)</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">18 yrs</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="age-max" data-group="age">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Maximum age (UR) — 23 years</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Upper age limit for General/UR candidates as on cut-off date</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">23 yrs</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="age-obc" data-group="age">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Age relaxation — OBC +3 years</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Upper age extended by 3 years for OBC candidates</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">+3 yrs</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="age-sc" data-group="age">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Age relaxation — SC/ST +5 years</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Upper age extended by 5 years for SC and ST candidates</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">+5 yrs</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="age-esm" data-group="age">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Age relaxation — ESM: deduct service + 3 yrs</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Ex-servicemen: actual age minus military service rendered, then +3 years</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">Deduct+3</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN -->
+          <div>
+            <div class="rule-group" id="rg-pst">
+              <div class="rule-group-header">
+                <div class="rule-group-title">Physical Standards (PST/PET)</div>
+                <span class="rule-count" id="cnt-pst">10 rules</span>
+              </div>
+              <div id="rules-pst">
+                <div class="rule-item" data-id="pst-m-ht" data-group="pst">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Male UR height ≥ 170 cm</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">General standard for male candidates; Garhwali/Kumaoni/Dogra/Maratha: 165 cm</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">170 cm</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="pst-f-ht" data-group="pst">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Female UR height ≥ 157 cm</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">General standard for female candidates</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">157 cm</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="pst-st-m" data-group="pst">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">ST male height — 162.5 cm</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">All ST male candidates (excluding NE ST sub-category)</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">162.5 cm</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="pst-ne-m" data-group="pst">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">NE States male height — 162.5 cm (standard)</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">NE candidates (AP, Manipur, Meghalaya, Mizoram, Nagaland, Sikkim, Tripura): 162.5 cm is their norm, NOT a relaxation</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">NORM</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="pst-gta-m" data-group="pst">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">GTA (Darjeeling) male height — 157 cm</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Gorkha Territorial Administration sub-divisions of Darjeeling district</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">157 cm</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="pst-chest-u" data-group="pst">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Male chest unexpanded ≥ 80 cm</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">ST: 76 cm; Garhwali/HP/J&K etc: 78 cm; GTA: 77 cm</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">80 cm</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="pst-chest-exp" data-group="pst">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Chest minimum expansion ≥ 5 cm</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Applicable to all male candidates regardless of category</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">+5 cm</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="pst-pet-male" data-group="pst">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">PET race — Male: 5 km in 24 min</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">For all male candidates outside Ladakh region. Ladakh: 1.6 km in 6:30</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">5km/24m</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="pst-pet-female" data-group="pst">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">PET race — Female: 1.6 km in 8.5 min</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">For female candidates outside Ladakh. Ladakh: 800 m in 4 min</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">1.6km/8.5m</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="pst-female-chest" data-group="pst">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Female chest — no measurement; well-developed check only</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Board ascertains chest is well-developed; no numeric cutoff for females</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">VISUAL</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="rule-group" id="rg-shortlist">
+              <div class="rule-group-header">
+                <div class="rule-group-title">Shortlisting Ratios</div>
+                <span class="rule-count" id="cnt-shortlist">3 rules</span>
+              </div>
+              <div id="rules-shortlist">
+                <div class="rule-item" data-id="sl-pst" data-group="shortlist">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">PST/PET shortlisting ratio — 12×</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">About 12 times the number of vacancies shortlisted for PST/PET</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">12×</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="sl-dme" data-group="shortlist">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">DME/DV shortlisting ratio — 3×</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">About 3 times the number of vacancies shortlisted for DME/DV</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">3×</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="sl-ssf" data-group="shortlist">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">SSF/NCB — All India basis; higher ratio allowed</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">More candidates can be shortlisted against SSF/NCB/All-India posts</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">FLEX</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="rule-group" id="rg-special">
+              <div class="rule-group-header">
+                <div class="rule-group-title">Special Provisions</div>
+                <span class="rule-count" id="cnt-special">8 rules</span>
+              </div>
+              <div id="rules-special">
+                <div class="rule-item" data-id="sp-pwd" data-group="special">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">PwD — reject at pre-processing stage</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Persons with Disabilities are NOT eligible for these posts (combat forces)</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">REJECT</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="sp-esm-pst" data-group="special">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">ESM — PET exempt; PST measurements recorded only</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">ESM not required to run PET race; measurements taken for records but no qualifying cutoff</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">EXEMPT</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="sp-esm-quota" data-group="special">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">ESM quota — 10% per category</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">If suitable ESM not available, vacancies filled by non-ESM of respective category</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">10%</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="sp-pregnant" data-group="special">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Pregnant (≥12 weeks) → Temporarily Unfit (TU)</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Not eliminated; vacancy reserved; re-examined 6 weeks after confinement</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">TU</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="sp-area-seq" data-group="special">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Area allocation sequence — Border before Naxal</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">If district is both Border Guarding AND Naxal: Border vacancies filled first, then Naxal</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">SEQ</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="sp-debarred" data-group="special">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Debarred DB check — name+DOB+father match</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">Match on name/father/mother + DOB where is_active=true; flagged as D</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">ACTIVE</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="sp-ssf-allindia" data-group="special">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">SSF vacancies — All India basis</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">SSF (Secretariat Security Force) filled on All India basis; not state-wise</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">ALL-IN</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+                <div class="rule-item" data-id="sp-domicile" data-group="special">
+                  <div class="rule-info">
+                    <div class="rule-name editable-name" ondblclick="editRuleInline(this)">Domicile mismatch → instant cancellation</div>
+                    <div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">If Domicile Cert state/district ≠ application form state/district, candidature cancelled</div>
+                  </div>
+                  <div class="rule-value editable-val" ondblclick="editRuleVal(this)">CANCEL</div>
+                  <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+                  <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Custom rules added by user -->
+            <div class="rule-group" id="rg-custom" style="display:none">
+              <div class="rule-group-header">
+                <div class="rule-group-title">Custom Rules</div>
+                <span class="rule-count" id="cnt-custom">0 rules</span>
+              </div>
+              <div id="rules-custom"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── JSON VIEW ─── -->
+      <div id="rules-json" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">rule_config.json — Live Configuration</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="copyJSON()">Copy JSON</button>
+              <button class="btn btn-ghost btn-sm" onclick="downloadJSON()">Download .json</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <textarea id="json-editor" style="width:100%;min-height:520px;font-family:'DM Mono',monospace;font-size:12px;border:1px solid var(--border);border-radius:var(--radius);padding:16px;line-height:1.7;color:var(--ink);background:var(--surface2);resize:vertical;outline:none" spellcheck="false"></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm" onclick="applyJSONRules()">Apply JSON Rules</button>
+              <span style="font-size:11px;color:var(--ink4);align-self:center">Edit directly and click Apply to update Visual Editor</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── MISSING RULES VIEW ─── -->
+      <div id="rules-missing" style="display:none">
+        <div class="card" style="margin-bottom:16px;border-left:4px solid var(--amber)">
+          <div class="card-header" style="background:var(--amber-bg)">
+            <div>
+              <div class="card-title" style="color:var(--amber)">⚠ Rules Identified from SOP / Notice — Not Yet in System</div>
+              <div class="card-subtitle">Cross-referenced against official SSC CTGD Notice 2021 and CTGD Result Processing SOP. Click "Add to Rules" to include them.</div>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0">
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="background:var(--surface2)">
+                  <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid var(--border)">Rule</th>
+                  <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid var(--border)">Source Reference</th>
+                  <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid var(--border)">Suggested Value</th>
+                  <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid var(--border)">Action</th>
+                </tr>
+              </thead>
+              <tbody id="missing-rules-body">
+                <tr>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border)">
+                    <div style="font-size:13px;font-weight:500;color:var(--ink)">Negative marking — 0.25 per wrong answer</div>
+                    <div style="font-size:11px;color:var(--ink3);margin-top:2px">CBE scoring penalty; not currently enforced in marks calculation</div>
+                  </td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--accent)">Notice Para 11.1.2</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);font-family:'DM Mono',monospace">−0.25/wrong</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="addMissingRule('Negative marking — 0.25 per wrong answer','CBE scoring penalty for incorrect answer','−0.25/wrong','cbe')">+ Add</button></td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border)">
+                    <div style="font-size:13px;font-weight:500;color:var(--ink)">NCC bonus revocation at DV if cert not produced</div>
+                    <div style="font-size:11px;color:var(--ink3);margin-top:2px">Provisionally awarded NCC marks must be withdrawn at DV if original cert missing</div>
+                  </td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--accent)">Notice Para 13.8</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);font-family:'DM Mono',monospace">REVOKE</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="addMissingRule('NCC bonus revocation at DV if cert not produced','Provisionally awarded NCC marks withdrawn at DV stage if original cert absent','REVOKE','ncc')">+ Add</button></td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border)">
+                    <div style="font-size:13px;font-weight:500;color:var(--ink)">Creamy layer exclusion for OBC candidates</div>
+                    <div style="font-size:11px;color:var(--ink3);margin-top:2px">OBC candidate must not fall in creamy layer on the closing date; certificate required</div>
+                  </td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--accent)">Notice Para 6.4</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);font-family:'DM Mono',monospace">EXCLUDE</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="addMissingRule('OBC creamy layer exclusion','OBC must not fall in creamy layer on closing date; income-asset check required','EXCLUDE','eligibility')">+ Add</button></td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border)">
+                    <div style="font-size:13px;font-weight:500;color:var(--ink)">SC/ST merit-at-par rule — not counted in reserved quota</div>
+                    <div style="font-size:11px;color:var(--ink3);margin-top:2px">SC/ST/OBC/EWS selected on own merit without relaxation go to UR pool, not reserved pool</div>
+                  </td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--accent)">Notice Para 13.14</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);font-family:'DM Mono',monospace">UR-POOL</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="addMissingRule('SC/ST/OBC merit-at-par → UR pool','Reserved category candidates selected without relaxation counted in UR pool, not reserved quota','UR-POOL','special')">+ Add</button></td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border)">
+                    <div style="font-size:13px;font-weight:500;color:var(--ink)">Weight — proportionate to height & age (medical standard)</div>
+                    <div style="font-size:11px;color:var(--ink3);margin-top:2px">Weight assessed per medical standard; no fixed value — varies by height and age</div>
+                  </td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--accent)">Notice Para 11.5.3</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);font-family:'DM Mono',monospace">MED-STD</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="addMissingRule('Weight — proportionate to height & age','Per DME medical board standard; no fixed numeric cutoff','MED-STD','pst')">+ Add</button></td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border)">
+                    <div style="font-size:13px;font-weight:500;color:var(--ink)">Photo on application must be ≤3 months old with date printed</div>
+                    <div style="font-size:11px;color:var(--ink3);margin-top:2px">Applications with undated/old photo summarily rejected during pre-processing</div>
+                  </td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--accent)">Notice Para 8.2</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);font-family:'DM Mono',monospace">REJECT</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="addMissingRule('Photo — must be ≤3 months old with date printed','Application with undated or old photo rejected at pre-processing','REJECT','eligibility')">+ Add</button></td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border)">
+                    <div style="font-size:13px;font-weight:500;color:var(--ink)">Multiple application submissions — all cancelled</div>
+                    <div style="font-size:11px;color:var(--ink3);margin-top:2px">If candidate submits more than one application, all are rejected</div>
+                  </td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--accent)">Notice Para 19 pt.13</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);font-family:'DM Mono',monospace">CANCEL-ALL</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="addMissingRule('Multiple applications → cancel all','If duplicate registration detected, all applications for that candidate cancelled','CANCEL-ALL','special')">+ Add</button></td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border)">
+                    <div style="font-size:13px;font-weight:500;color:var(--ink)">Assam state — domicile cert not required</div>
+                    <div style="font-size:11px;color:var(--ink3);margin-top:2px">Assam does not issue domicile/PRC; verified via district authority instead</div>
+                  </td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--accent)">Notice Para 6.7</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);font-family:'DM Mono',monospace">EXEMPT</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="addMissingRule('Assam — domicile certificate exemption','Assam state does not issue PRC/domicile; residential status verified by district authority','EXEMPT','special')">+ Add</button></td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border)">
+                    <div style="font-size:13px;font-weight:500;color:var(--ink)">WPR (West Pakistani Refugees) — special nativity cert</div>
+                    <div style="font-size:11px;color:var(--ink3);margin-top:2px">WPRs in J&K/Ladakh without citizenship produce Nativity/Identity cert (Annexure-XII)</div>
+                  </td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--accent)">Notice Para 6.8</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);font-family:'DM Mono',monospace">WPR-CERT</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="addMissingRule('WPR — Nativity/Identity Certificate instead of domicile','West Pakistani Refugees in J&K/Ladakh accepted without domicile cert; use Annexure-XII','WPR-CERT','special')">+ Add</button></td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px">
+                    <div style="font-size:13px;font-weight:500;color:var(--ink)">Migration state choice — SC/ST/OBC origin vs domicile</div>
+                    <div style="font-size:11px;color:var(--ink3);margin-top:2px">Migrated candidate chooses between origin state (reservation benefit) or domicile state (UR/EWS); locked at submission</div>
+                  </td>
+                  <td style="padding:12px 16px;font-size:12px;color:var(--accent)">Notice Para 6.2</td>
+                  <td style="padding:12px 16px;font-size:13px;color:var(--ink);font-family:'DM Mono',monospace">LOCK-ONCE</td>
+                  <td style="padding:12px 16px;text-align:center"><button class="btn btn-ghost btn-sm" onclick="addMissingRule('Migration — origin vs domicile state choice locked at submission','SC/ST/OBC migrant must choose reservation in origin state or UR in domicile state; cannot change after submission','LOCK-ONCE','special')">+ Add</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════ VACANCY & PLACEMENT UPLOAD ══════════ -->
+  <div class="page" id="page-vacancy">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Vacancy & Placement Sheet Upload</div>
+        <div class="topbar-sub">Upload vacancy tables, placement sheets, states/districts reference — auto-validates format and maps to vacancy keys</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportVacancySummary()">Export Summary</button>
+        <button class="btn btn-primary btn-sm" onclick="validateAllSheets()">Validate All Sheets</button>
+      </div>
+    </div>
+    <div style="padding:28px">
+
+      <!-- Status Overview -->
+      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+        <div class="stat-card">
+          <div class="stat-card-accent" style="background:var(--green)"></div>
+          <div class="stat-label">Vacancy Table</div>
+          <div class="stat-value" id="vac-status-1" style="font-size:18px;color:var(--green)">✓ Loaded</div>
+          <div class="stat-delta">ctgd2025_vacancy_table.xlsx</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-accent" style="background:var(--green)"></div>
+          <div class="stat-label">States & Districts</div>
+          <div class="stat-value" id="vac-status-2" style="font-size:18px;color:var(--green)">✓ Loaded</div>
+          <div class="stat-delta">ctgd2025_m_states_districts.csv</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-accent" style="background:var(--amber)"></div>
+          <div class="stat-label">Placement Sheet</div>
+          <div class="stat-value" id="vac-status-3" style="font-size:18px;color:var(--amber)">⚠ Pending</div>
+          <div class="stat-delta">Not uploaded yet</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-accent" style="background:var(--red)"></div>
+          <div class="stat-label">Vacancy Key Errors</div>
+          <div class="stat-value" id="vac-errors" style="font-size:18px;color:var(--red)">0</div>
+          <div class="stat-delta">Unmatched keys detected</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- LEFT: Upload Panels -->
+        <div>
+          <!-- Vacancy Table Upload -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header">
+              <div>
+                <div class="card-title">📋 Vacancy Table</div>
+                <div class="card-subtitle">ctgd2025_vacancy_table.xlsx · Required columns: state_code, force, post_code, gender, category, vacancy_count, area_type</div>
+              </div>
+              <span class="badge badge-green">Loaded</span>
+            </div>
+            <div class="card-body">
+              <div class="upload-zone" id="vac-zone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleFileDrop(event,'vac')" onclick="document.getElementById('vac-file').click()">
+                <div style="font-size:28px;margin-bottom:8px">📊</div>
+                <div style="font-weight:500;color:var(--ink2)">Drop .xlsx / .csv here or click to browse</div>
+                <div style="font-size:11px;color:var(--ink4);margin-top:4px">Accepts: Excel (.xlsx), CSV (.csv) · Max: 10MB</div>
+                <input type="file" id="vac-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileSelect(this,'vac')">
+              </div>
+              <div id="vac-progress" class="hidden" style="margin-top:12px">
+                <div style="font-size:12px;color:var(--ink3);margin-bottom:6px;display:flex;justify-content:space-between"><span id="vac-status-msg">Validating…</span><span id="vac-pct">0%</span></div>
+                <div class="progress-track"><div class="progress-fill" id="vac-bar" style="width:0%;background:var(--accent)"></div></div>
+              </div>
+              <div id="vac-result" style="display:none;margin-top:12px"></div>
+              <div style="margin-top:12px">
+                <div style="font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px">Required Schema</div>
+                <div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);border-radius:var(--radius);padding:10px 12px;color:var(--ink2);line-height:1.8">
+                  state_ut_code <span style="color:var(--accent)">INT</span> · post_code <span style="color:var(--accent)">CHAR(1)</span><br>
+                  gender <span style="color:var(--accent)">CHAR(1)</span> [M/F] · category <span style="color:var(--accent)">VARCHAR</span><br>
+                  vacancy_count <span style="color:var(--accent)">INT</span> · area_type <span style="color:var(--accent)">VARCHAR</span> [GENERAL/BORDER/NAXAL]<br>
+                  force_code <span style="color:var(--accent)">VARCHAR</span> · min_marks <span style="color:var(--accent)">FLOAT</span> (optional)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Placement Sheet Upload -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header">
+              <div>
+                <div class="card-title">📑 Placement / Allocation Sheet</div>
+                <div class="card-subtitle">Final allocated candidates per force per state · Used to compute min-merit and lowest cutoff per vacancy key</div>
+              </div>
+              <span class="badge badge-amber">Pending</span>
+            </div>
+            <div class="card-body">
+              <div class="upload-zone" id="place-zone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleFileDrop(event,'place')" onclick="document.getElementById('place-file').click()">
+                <div style="font-size:28px;margin-bottom:8px">📑</div>
+                <div style="font-weight:500;color:var(--ink2)">Drop Placement .xlsx / .csv here</div>
+                <div style="font-size:11px;color:var(--ink4);margin-top:4px">Accepts: Excel (.xlsx), CSV (.csv) · Max: 50MB</div>
+                <input type="file" id="place-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileSelect(this,'place')">
+              </div>
+              <div id="place-progress" class="hidden" style="margin-top:12px">
+                <div style="font-size:12px;color:var(--ink3);margin-bottom:6px;display:flex;justify-content:space-between"><span id="place-status-msg">Validating…</span><span id="place-pct">0%</span></div>
+                <div class="progress-track"><div class="progress-fill" id="place-bar" style="width:0%;background:var(--accent)"></div></div>
+              </div>
+              <div id="place-result" style="display:none;margin-top:12px"></div>
+              <div style="margin-top:12px">
+                <div style="font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px">Required Schema</div>
+                <div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);border-radius:var(--radius);padding:10px 12px;color:var(--ink2);line-height:1.8">
+                  registrationNo <span style="color:var(--accent)">VARCHAR</span> · rollno <span style="color:var(--accent)">VARCHAR</span><br>
+                  force_allocated <span style="color:var(--accent)">VARCHAR</span> · state_ut_code <span style="color:var(--accent)">INT</span><br>
+                  category <span style="color:var(--accent)">VARCHAR</span> · gender <span style="color:var(--accent)">CHAR(1)</span><br>
+                  total_marks_new <span style="color:var(--accent)">FLOAT</span> · area_type <span style="color:var(--accent)">VARCHAR</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: States/Districts + Vacancy Key Validator -->
+        <div>
+          <!-- States/Districts Upload -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header">
+              <div>
+                <div class="card-title">🗺 States & Districts Reference</div>
+                <div class="card-subtitle">ctgd2025_m_states_districts.csv · Maps state codes to names; flags Border/Naxal districts</div>
+              </div>
+              <span class="badge badge-green">Loaded</span>
+            </div>
+            <div class="card-body">
+              <div class="upload-zone" id="states-zone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleFileDrop(event,'states')" onclick="document.getElementById('states-file').click()">
+                <div style="font-size:28px;margin-bottom:8px">🗺</div>
+                <div style="font-weight:500;color:var(--ink2)">Update States/Districts CSV</div>
+                <div style="font-size:11px;color:var(--ink4);margin-top:4px">Accepts: CSV (.csv) only · Currently loaded from system</div>
+                <input type="file" id="states-file" accept=".csv" style="display:none" onchange="handleFileSelect(this,'states')">
+              </div>
+              <div id="states-progress" class="hidden" style="margin-top:12px">
+                <div style="font-size:12px;color:var(--ink3);margin-bottom:6px;display:flex;justify-content:space-between"><span id="states-status-msg">Validating…</span><span id="states-pct">0%</span></div>
+                <div class="progress-track"><div class="progress-fill" id="states-bar" style="width:0%;background:var(--accent)"></div></div>
+              </div>
+              <div style="margin-top:12px">
+                <div style="font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px">Required Schema</div>
+                <div style="font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);border-radius:var(--radius);padding:10px 12px;color:var(--ink2);line-height:1.8">
+                  state_ut_code <span style="color:var(--accent)">INT</span> · state_name <span style="color:var(--accent)">VARCHAR</span><br>
+                  district_code <span style="color:var(--accent)">INT</span> · district_name <span style="color:var(--accent)">VARCHAR</span><br>
+                  is_border_district <span style="color:var(--accent)">BOOL</span> · is_naxal_district <span style="color:var(--accent)">BOOL</span><br>
+                  region_code <span style="color:var(--accent)">CHAR(3)</span> [NWR/CR/ER/NER etc]
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vacancy Key Validator -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🔑 Vacancy Key Validator</div>
+              <div class="card-subtitle">Format: {state_code}{post_code}{gender_code}{category_code} · e.g. 29-A-M-OBC</div>
+            </div>
+            <div class="card-body">
+              <div style="display:flex;gap:8px;margin-bottom:12px">
+                <input id="vkey-input" placeholder="Enter vacancy key e.g. 29-A-M-OBC" style="flex:1;padding:8px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;outline:none" onkeydown="if(event.key==='Enter')validateKey()">
+                <button class="btn btn-primary btn-sm" onclick="validateKey()">Validate</button>
+              </div>
+              <div id="vkey-result" style="font-size:13px;color:var(--ink3)">Enter a vacancy key above to validate it against loaded sheets.</div>
+
+              <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px">Vacancy Key Logic</div>
+                <div style="font-size:12px;color:var(--ink2);line-height:1.9">
+                  <div>• <strong>Post codes:</strong> A=BSF · B=CISF · C=CRPF · D=SSB · E=ITBP · F=AR · G=NCB · H=SSF</div>
+                  <div>• <strong>Gender codes:</strong> M=Male · F=Female</div>
+                  <div>• <strong>Category codes:</strong> UR=Unreserved · OBC · SC · ST · EWS · ESM</div>
+                  <div>• <strong>Area types:</strong> GENERAL · BORDER · NAXAL</div>
+                  <div>• <strong>SSF/NCB:</strong> All India — no state code needed</div>
+                  <div>• <strong>Domicile:</strong> state_ut_code_considered from candidate master</div>
+                </div>
+              </div>
+
+              <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px">Upload Validation Rules</div>
+                <div id="upload-checks" style="font-size:12px;color:var(--ink2);line-height:2">
+                  <div>✓ <span style="color:var(--green)">Schema check:</span> All required columns present</div>
+                  <div>✓ <span style="color:var(--green)">State code check:</span> All codes in 1–36 range</div>
+                  <div>✓ <span style="color:var(--green)">Force code check:</span> A/B/C/D/E/F/G/H only</div>
+                  <div>✓ <span style="color:var(--green)">Gender code:</span> M or F only</div>
+                  <div>✓ <span style="color:var(--green)">Category code:</span> UR/OBC/SC/ST/EWS/ESM</div>
+                  <div>✓ <span style="color:var(--green)">Vacancy count:</span> ≥ 0, integer</div>
+                  <div>⚠ <span style="color:var(--amber)">Area type check:</span> Upload vacancy table to verify</div>
+                  <div>⚠ <span style="color:var(--amber)">Duplicate key check:</span> Upload all sheets to verify</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+    <!-- ══════════ MERIT LIST ══════════ -->
+  <div class="page" id="page-merit">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Merit List</div>
+        <div class="topbar-sub">Sorted: total_marks_new DESC → dob ASC (older preferred) · Vacancy key = state × force × post × gender × category</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm">Export CSV</button>
+        <button class="btn btn-ghost btn-sm">Export Excel</button>
+        <button class="btn btn-primary btn-sm">Generate PDF</button>
+      </div>
+    </div>
+    <div style="padding:28px">
+      <div class="filter-row mb-20">
+        <select class="filter-select"><option>All forces</option><option>BSF</option><option>CISF</option><option>CRPF</option><option>ITBP</option><option>SSB</option><option>Assam Rifles</option><option>NCB</option><option>SSF</option></select>
+        <select class="filter-select"><option>All categories</option><option>UR</option><option>OBC</option><option>SC</option><option>ST</option><option>EWS</option><option>ESM</option></select>
+        <select class="filter-select"><option>All genders</option><option>Male (2)</option><option>Female (1)</option></select>
+        <select class="filter-select"><option>All areas</option><option>General</option><option>Naxal (naxal_district=t)</option><option>Border (border_district=t)</option></select>
+        <select class="filter-select"><option>All provisions</option><option>C – Cleared</option><option>W – Withheld</option><option>D – Debarred</option><option>T – Temp Unfit</option></select>
+        <div class="search-box" style="min-width:160px"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="m15 15 4 4"/></svg><input placeholder="Search ID or name…"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Recommended merit list</div>
+            <div class="card-subtitle">3 sample candidates · Sorted by total_marks_new · Tie-break: parta_gi → partb_ga → dob (older first)</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink3)">
+            <div class="legend-dot" style="background:var(--green);display:inline-block"></div>Cleared
+            <div class="legend-dot" style="background:var(--amber);display:inline-block;margin-left:8px"></div>TU
+            <div class="legend-dot" style="background:var(--red);display:inline-block;margin-left:8px"></div>Withheld
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Rank</th><th>Reg No</th><th>Roll No</th><th>Name</th><th>Cat.</th><th>Gender</th><th>State</th><th>Norm. Marks</th><th>NCC Marks</th><th>Total Marks</th><th>DOB</th><th>Vacancy Key</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td><div class="rank-badge rank-1">1</div></td><td class="mono">10019664893</td><td class="mono">2411024765</td><td><strong>VIKASH KASWAN</strong></td><td><span class="badge badge-amber">OBC</span></td><td>M</td><td>Rajasthan · Bikaner</td><td class="mono">125.133</td><td class="mono">0.00</td><td class="mono"><strong>125.133</strong></td><td class="mono">23-10-2005</td><td class="mono" style="color:var(--accent)">29-?-M-OBC</td><td><span class="badge badge-green">Q (Qualified)</span></td></tr>
+              <tr><td><div class="rank-badge rank-2">2</div></td><td class="mono">10012665754</td><td class="mono">1010001491</td><td><strong>KESHAV SHARMA</strong></td><td><span class="badge badge-gray">—</span></td><td>M</td><td>J&amp;K · Kathua</td><td class="mono">121.024</td><td class="mono">0.00</td><td class="mono"><strong>121.024</strong></td><td class="mono">24-01-2006</td><td class="mono" style="color:var(--ink3)">15-?-M-?</td><td><span class="badge badge-amber">Cat. Pending</span></td></tr>
+              <tr><td><div class="rank-badge rank-n">3</div></td><td class="mono">10017994504</td><td class="mono">5105000184</td><td><strong>HIMJYOTI MAZUMDAR</strong></td><td><span class="badge badge-purple">SC</span></td><td>M</td><td>Assam · Morigaon</td><td class="mono">90.062</td><td class="mono">0.00</td><td class="mono"><strong>90.062</strong></td><td class="mono">07-09-2001</td><td class="mono" style="color:var(--accent)">4-?-M-SC</td><td><span class="badge badge-green">Q (Qualified)</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <div class="pager-info">Showing 3 of 3 candidates (sample) · Sorted by total_marks_new DESC</div>
+          <div class="pager-btns">
+            <button class="pager-btn active">1</button>
+            <button class="pager-btn">2</button>
+            <button class="pager-btn">3</button>
+            <span style="font-size:12px;color:var(--ink4);margin:0 4px">…</span>
+            <button class="pager-btn">1</button>
+            <button class="pager-btn">›</button>
+          </div>
+        </div>
+        <div class="export-panel">
+          <span class="export-label">Export as:</span>
+          <button class="btn btn-ghost btn-sm" onclick="showToast('CSV export started','info')">CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="showToast('Excel export started','info')">Excel (.xlsx)</button>
+          <button class="btn btn-primary btn-sm" onclick="showToast('PDF generation started — may take a moment','info')">PDF Merit List</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ FORCE ALLOCATION ══════════ -->
+  <div class="page" id="page-allocation">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Force Allocation</div>
+        <div class="topbar-sub">Vacancy key = state_code + post_code + gender + category_code · All-India for SSF &amp; NCB · Area sequence: Naxal → Border → General</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm">Export Allocation</button>
+      </div>
+    </div>
+    <div style="padding:28px">
+      <div class="mb-20">
+        <div style="font-size:12px;font-weight:600;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:12px">Force cards — vacancy vs. allocated</div>
+        <div class="force-grid">
+          <div class="force-card"><div class="force-code">BSF</div><div class="force-name">Border Security Force</div><div class="force-vac">471 vacancies</div><div class="force-bar"><div class="progress-track"><div class="progress-fill" style="width:78%;background:var(--green)"></div></div><div style="font-size:10px;color:var(--green);margin-top:3px">~78% filled · Post codes: A</div></div></div>
+          <div class="force-card"><div class="force-code">CISF</div><div class="force-name">Central Industrial Security Force</div><div class="force-vac">268 vacancies</div><div class="force-bar"><div class="progress-track"><div class="progress-fill" style="width:82%;background:var(--green)"></div></div><div style="font-size:10px;color:var(--green);margin-top:3px">~82% filled · Post codes: B</div></div></div>
+          <div class="force-card"><div class="force-code">CRPF</div><div class="force-name">Central Reserve Police Force</div><div class="force-vac">151 vacancies</div><div class="force-bar"><div class="progress-track"><div class="progress-fill" style="width:75%;background:var(--amber)"></div></div><div style="font-size:10px;color:var(--amber);margin-top:3px">~75% filled · Post codes: C</div></div></div>
+          <div class="force-card"><div class="force-code">ITBP</div><div class="force-name">Indo-Tibetan Border Police</div><div class="force-vac">158 vacancies</div><div class="force-bar"><div class="progress-track"><div class="progress-fill" style="width:80%;background:var(--green)"></div></div><div style="font-size:10px;color:var(--green);margin-top:3px">~80% filled · Post codes: E</div></div></div>
+          <div class="force-card"><div class="force-code">SSB</div><div class="force-name">Sashastra Seema Bal</div><div class="force-vac">152 vacancies</div><div class="force-bar"><div class="progress-track"><div class="progress-fill" style="width:76%;background:var(--amber)"></div></div><div style="font-size:10px;color:var(--amber);margin-top:3px">~76% filled · Post codes: D</div></div></div>
+          <div class="force-card"><div class="force-code">AR</div><div class="force-name">Assam Rifles (Rifleman GD)</div><div class="force-vac">69 vacancies</div><div class="force-bar"><div class="progress-track"><div class="progress-fill" style="width:85%;background:var(--green)"></div></div><div style="font-size:10px;color:var(--green);margin-top:3px">~85% filled · Post codes: F</div></div></div>
+          <div class="force-card"><div class="force-code">NCB</div><div class="force-name">Narcotics Control Bureau</div><div class="force-vac">2 vacancies</div><div class="force-bar"><div class="progress-track"><div class="progress-fill" style="width:50%;background:var(--amber)"></div></div><div style="font-size:10px;color:var(--amber);margin-top:3px">50% filled · All-India basis</div></div></div>
+          <div class="force-card"><div class="force-code">SSF</div><div class="force-name">Special Security Force</div><div class="force-vac">33 vacancies</div><div class="force-bar"><div class="progress-track"><div class="progress-fill" style="width:90%;background:var(--green)"></div></div><div style="font-size:10px;color:var(--green);margin-top:3px">~90% filled · All-India basis</div></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Area-wise allocation breakdown</div><div class="card-subtitle">Vacancy key format: {state_code}{post_code}{gender_code}{category_code} · e.g. 12BG9 = State 1, CISF(B), Male(2), UR(9)</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Force</th><th>Naxal Vacancy</th><th>Naxal Filled</th><th>Border Vacancy</th><th>Border Filled</th><th>General Vacancy</th><th>General Filled</th><th>Total</th></tr></thead>
+            <tbody>
+              <tr><td><strong>BSF</strong></td><td class="mono">120</td><td class="mono" style="color:var(--green)">120</td><td class="mono">200</td><td class="mono" style="color:var(--green)">200</td><td class="mono">2,084</td><td class="mono" style="color:var(--green)">1,988</td><td class="mono"><strong>2,308</strong></td></tr>
+              <tr><td><strong>CRPF</strong></td><td class="mono">280</td><td class="mono" style="color:var(--green)">280</td><td class="mono">150</td><td class="mono" style="color:var(--green)">150</td><td class="mono">2,907</td><td class="mono" style="color:var(--green)">2,840</td><td class="mono"><strong>3,270</strong></td></tr>
+              <tr><td><strong>ITBP</strong></td><td class="mono">0</td><td class="mono">0</td><td class="mono">500</td><td class="mono" style="color:var(--amber)">308</td><td class="mono">748</td><td class="mono" style="color:var(--amber)">616</td><td class="mono"><strong>924</strong></td></tr>
+              <tr><td><strong>NCB</strong></td><td class="mono" colspan="6" style="color:var(--ink3)">All-India basis — no area classification</td><td class="mono"><strong>150</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ LOGS ══════════ -->
+  <div class="page" id="page-logs">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Logs & Audit Trail</div>
+        <div class="topbar-sub">Complete processing history · All events time-stamped</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm">Clear Filters</button>
+        <button class="btn btn-primary btn-sm" onclick="showToast('Audit log exported','success')">Export Logs</button>
+      </div>
+    </div>
+    <div style="padding:28px">
+      <div class="filter-row mb-16">
+        <select class="filter-select"><option>All levels</option><option>INFO</option><option>SUCCESS</option><option>WARN</option><option>ERROR</option></select>
+        <select class="filter-select"><option>All modules</option><option>UPLOAD</option><option>VALIDATE</option><option>MAP</option><option>CUTOFF</option><option>NCC</option><option>MERIT</option><option>PST</option><option>PET</option><option>DME</option><option>DV</option><option>ALLOC</option><option>DEBARRED</option></select>
+        <div class="search-box" style="flex:1;min-width:200px"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="m15 15 4 4"/></svg><input placeholder="Search log text…"></div>
+      </div>
+      <div class="log-container" id="log-container">
+        <div class="log-entry log-ok"><span class="log-ts">09:42:10</span><span class="log-level">SUCCESS</span><span class="log-msg">[UPLOAD] Candidate master loaded: 3 records (sample). Fields: registrationNo, rollno, category, gender, state_ut_code_considered, total_marks_new, dob. 0 duplicates.</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:42:15</span><span class="log-level">SUCCESS</span><span class="log-msg">[VALIDATE] DOB range check: 24-01-2006 (KESHAV SHARMA), 23-10-2005 (VIKASH KASWAN), 07-09-2001 (HIMJYOTI MAZUMDAR) — all parsed from DD-MM-YYYY format.</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:42:16</span><span class="log-level">SUCCESS</span><span class="log-msg">[VALIDATE] State code check: stateCode 15 (J&K), 29 (Rajasthan), 4 (Assam) — all matched in ctgd2025_m_states_districts.csv.</span></div>
+        <div class="log-entry log-info"><span class="log-ts">09:42:18</span><span class="log-level">INFO</span><span class="log-msg">[VALIDATE] PwD candidates detected: 42. Auto-rejected at pre-processing stage per rule config.</span></div>
+        <div class="log-entry log-info"><span class="log-ts">09:43:01</span><span class="log-level">INFO</span><span class="log-msg">[UPLOAD] CBE marks file uploaded: 2,43,817 rows detected. Schema validation starting…</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:43:04</span><span class="log-level">SUCCESS</span><span class="log-msg">[MAP] Vacancy key matching: state_ut_code_considered + post_code + gender + category_code → mapped to 405 vacancy slots in ctgd2025_vacancy_table.xlsx.</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:43:05</span><span class="log-level">SUCCESS</span><span class="log-msg">[CUTOFF] min_marks check: VIKASH KASWAN (125.133) ≥ min_marks, KESHAV SHARMA (121.024) ≥ min_marks, HIMJYOTI MAZUMDAR (90.062) — pending vacancy slot match.</span></div>
+        <div class="log-entry log-info"><span class="log-ts">09:43:06</span><span class="log-level">INFO</span><span class="log-msg">[NCC] ncc_marks_new check: all 3 sample candidates have ncc_marks_new=0. total_marks_new = normalized_score + ncc_marks_new confirmed.</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:44:12</span><span class="log-level">SUCCESS</span><span class="log-msg">[MERIT] Merit sort applied: total_marks_new DESC → parta_gi DESC → partb_ga DESC → dob ASC. Rank 1: VIKASH KASWAN (125.133), Rank 2: KESHAV SHARMA (121.024), Rank 3: HIMJYOTI MAZUMDAR (90.062).</span></div>
+        <div class="log-entry log-info"><span class="log-ts">09:45:00</span><span class="log-level">INFO</span><span class="log-msg">[UPLOAD] PST result file uploaded: 1,91,200 rows. Parsing started…</span></div>
+        <div class="log-entry log-warn"><span class="log-ts">09:45:03</span><span class="log-level">WARN</span><span class="log-msg">[VALIDATE] 12 records have PHTR_code = boolean (true/false) instead of specific relaxation code. IDs: CTGD0041200–CTGD0041211. Flagged for correction.</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:45:04</span><span class="log-level">SUCCESS</span><span class="log-msg">[ESM] ESM PST exemption applied: 4,210 candidates marked EXEMPT. Measurements recorded for all.</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:46:30</span><span class="log-level">SUCCESS</span><span class="log-msg">[PST] HT_relax flags computed: T→8,420 | F→1,82,780. NE state candidates correctly set to F (standard, not relaxation).</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:46:31</span><span class="log-level">SUCCESS</span><span class="log-msg">[PST] CT_relax flags computed (male only): T→3,210 | F→remaining males.</span></div>
+        <div class="log-entry log-info"><span class="log-ts">09:47:10</span><span class="log-level">INFO</span><span class="log-msg">[UPLOAD] PET results uploaded: 61,820 rows. 0 schema errors. 0 ID mismatches.</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:47:11</span><span class="log-level">SUCCESS</span><span class="log-msg">[PET] Qualification: PASS→48,210 | FAIL→9,400 | TU→210 | EXEMPT (ESM)→4,000.</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:47:12</span><span class="log-level">SUCCESS</span><span class="log-msg">[PST] catsel assignment complete: eligible candidates for DME/DV shortlisting computed.</span></div>
+        <div class="log-entry log-info"><span class="log-ts">09:48:00</span><span class="log-level">INFO</span><span class="log-msg">[UPLOAD] DME results uploaded (partial): 38,150 / 48,210 rows received.</span></div>
+        <div class="log-entry log-err"><span class="log-ts">09:48:01</span><span class="log-level">ERROR</span><span class="log-msg">[MAP] 82 candidate_unique_id values in DME file not found in master. IDs: CTGD0099810–CTGD0099891. Records blocked. Upload corrected file.</span></div>
+        <div class="log-entry log-warn"><span class="log-ts">09:48:02</span><span class="log-level">WARN</span><span class="log-msg">[DME] 2,340 candidates sent for RME (initially unfit). Awaiting RME outcomes before final DME status.</span></div>
+        <div class="log-entry log-ok"><span class="log-ts">09:49:00</span><span class="log-level">SUCCESS</span><span class="log-msg">[DEBARRED] Debarred DB check complete: 3 matches on name+DOB. Flagged as D. CRPF notified.</span></div>
+        <div class="log-entry log-warn"><span class="log-ts">09:49:01</span><span class="log-level">WARN</span><span class="log-msg">[WITHHELD] 42 candidates flagged W (EDP-provided). 273 flagged S (suspected by CRPF). Awaiting resolution.</span></div>
+        <div class="log-entry log-info"><span class="log-ts">09:50:00</span><span class="log-level">INFO</span><span class="log-msg">[SYSTEM] Ready to run: vacancy key matching pending. Candidate with missing category (regNo: 10012665754) will be skipped. 2 candidates eligible for vacancy slot allocation via state × force × post × gender × category key.</span></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main-area -->
+
+<!-- ══════════ CANDIDATE DETAIL DRAWER ══════════ -->
+<div class="detail-overlay" id="drawer-overlay" onclick="closeDrawer()">
+  <div class="detail-drawer" onclick="event.stopPropagation()">
+    <div class="drawer-header">
+      <div class="drawer-avatar" id="drawer-avatar">RK</div>
+      <div>
+        <div class="drawer-name" id="drawer-name">Ramesh Kumar</div>
+        <div class="drawer-id" id="drawer-id">CTGD0010042 · Roll: CBE2025101001</div>
+      </div>
+      <div class="drawer-close" onclick="closeDrawer()">✕</div>
+    </div>
+    <div class="drawer-body">
+      <div class="detail-section">
+        <div class="detail-section-title">Personal information</div>
+        <div class="detail-row"><div class="detail-key">Date of birth</div><div class="detail-val" id="dd-dob">14 May 1999</div></div>
+        <div class="detail-row"><div class="detail-key">Gender</div><div class="detail-val" id="dd-gender">Male</div></div>
+        <div class="detail-row"><div class="detail-key">Category</div><div class="detail-val" id="dd-cat">UR (General)</div></div>
+        <div class="detail-row"><div class="detail-key">ESM status</div><div class="detail-val" id="dd-esm">No</div></div>
+        <div class="detail-row"><div class="detail-key">NCC certificate</div><div class="detail-val" id="dd-ncc">Grade C (+5%)</div></div>
+        <div class="detail-row"><div class="detail-key">State / District</div><div class="detail-val" id="dd-state">Delhi · New Delhi</div></div>
+        <div class="detail-row"><div class="detail-key">Area type</div><div class="detail-val" id="dd-area">General</div></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">Force preferences</div>
+        <div class="detail-row"><div class="detail-key">Pref 1–4</div><div class="detail-val" id="dd-forces">BSF → CISF → CRPF → ITBP</div></div>
+        <div class="detail-row"><div class="detail-key">Pref 5–8</div><div class="detail-val">SSB → AR → NCB → SSF</div></div>
+        <div class="detail-row"><div class="detail-key">Force allotted</div><div class="detail-val" id="dd-allot"><span class="badge badge-green">BSF</span></div></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">CBE performance</div>
+        <div class="detail-row"><div class="detail-key">Normalised marks</div><div class="detail-val mono" id="dd-marks">87.20</div></div>
+        <div class="detail-row"><div class="detail-key">Part-A (Reasoning)</div><div class="detail-val mono" id="dd-pa">42.00</div></div>
+        <div class="detail-row"><div class="detail-key">Part-B (GK)</div><div class="detail-val mono" id="dd-pb">45.20</div></div>
+        <div class="detail-row"><div class="detail-key">NCC bonus</div><div class="detail-val mono" id="dd-nccb">+4.36</div></div>
+        <div class="detail-row"><div class="detail-key">Total (with NCC)</div><div class="detail-val mono" id="dd-total"><strong>91.56</strong></div></div>
+        <div class="detail-row"><div class="detail-key">Overall rank</div><div class="detail-val mono" id="dd-rank"><strong>#1</strong></div></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">Stage journey</div>
+        <div class="stage-timeline">
+          <div class="timeline-item"><div class="timeline-dot done"></div><div class="timeline-stage" id="dd-s1">CBE — 91.56 marks</div><div class="timeline-detail">Cleared cutoff (UR ≥30%) · Shortlisted for PST/PET</div></div>
+          <div class="timeline-item"><div class="timeline-dot" id="dd-dot2" class="done"></div><div class="timeline-stage" id="dd-s2">PST — PASS</div><div class="timeline-detail" id="dd-s2d">Height: 172cm ✓ · Chest: 82/87cm ✓ · HT_relax: F</div></div>
+          <div class="timeline-item"><div class="timeline-dot" id="dd-dot3"></div><div class="timeline-stage" id="dd-s3">PET — PASS</div><div class="timeline-detail" id="dd-s3d">Race: 5:30 ✓ · Long jump: 3.80m ✓</div></div>
+          <div class="timeline-item"><div class="timeline-dot" id="dd-dot4"></div><div class="timeline-stage" id="dd-s4">DME — FIT</div><div class="timeline-detail" id="dd-s4d">Medical board: MB2024001 · Vision: 6/6 both eyes</div></div>
+          <div class="timeline-item"><div class="timeline-dot" id="dd-dot5"></div><div class="timeline-stage" id="dd-s5">DV — CLEARED</div><div class="timeline-detail" id="dd-s5d">All documents verified · Provision: C</div></div>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-section-title">Provision status</div>
+        <div class="detail-row"><div class="detail-key">Code</div><div class="detail-val" id="dd-prov"><span class="badge badge-green">C — Cleared</span></div></div>
+        <div class="detail-row"><div class="detail-key">Remarks</div><div class="detail-val" id="dd-remarks">All stages cleared; allocated to BSF</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TOAST CONTAINER ══════════ -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+  // ── Navigation ──
+  const pages = ['dashboard','candidates','upload','rules','merit','allocation','logs'];
+  function navigate(page, el) {
+    pages.forEach(p => {
+      const pg = document.getElementById('page-' + p);
+      if (pg) pg.classList.remove('active');
+    });
+    const target = document.getElementById('page-' + page);
+    if (target) target.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    if (el) el.classList.add('active');
+  }
+
+  // ── Tabs ──
+  function switchTab(el, contentId) {
+    const parent = el.closest('[style*="padding"]') || el.parentElement.parentElement;
+    el.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    const all = ['tc-cbe','tc-pst','tc-pet','tc-dme','tc-dv'];
+    all.forEach(id => { const e = document.getElementById(id); if (e) e.classList.remove('active'); });
+    const t = document.getElementById(contentId);
+    if (t) t.classList.add('active');
+  }
+
+  // ── Rule editor tabs ──
+  function switchRuleTab(mode) {
+    document.getElementById('rules-visual').style.display = mode === 'visual' ? '' : 'none';
+    document.getElementById('rules-json').style.display = mode === 'json' ? '' : 'none';
+  }
+
+  // ── Upload simulation ──
+  function simulateUpload(type) {
+    const progId = type + '-progress';
+    const barId = type + '-bar';
+    const pctId = type + '-pct';
+    const statusId = type + '-status';
+    const prog = document.getElementById(progId);
+    const bar = document.getElementById(barId);
+    const pct = document.getElementById(pctId);
+    const status = document.getElementById(statusId);
+    if (!prog) return;
+    prog.classList.remove('hidden');
+    const steps = [
+      [8, 'Initialising parser…'],
+      [20, 'Reading headers…'],
+      [35, 'Validating schema…'],
+      [55, 'Mapping candidate IDs…'],
+      [72, 'Running sanity checks…'],
+      [88, 'Applying validation rules…'],
+      [100, '✓ Upload complete — all records processed']
+    ];
+    let i = 0;
+    const iv = setInterval(() => {
+      if (i >= steps.length) { clearInterval(iv); showToast('Upload complete — records loaded successfully', 'success'); return; }
+      bar.style.width = steps[i][0] + '%';
+      if (pct) pct.textContent = steps[i][0] + '%';
+      if (status) {
+        status.textContent = steps[i][1];
+        status.style.color = steps[i][0] === 100 ? 'var(--green)' : 'var(--ink3)';
+      }
+      i++;
+    }, 480);
+  }
+
+  // ── Processing simulation ──
+  function runProcessing() {
+    const bar = document.getElementById('proc-bar');
+    const fill = document.getElementById('proc-fill');
+    const msg = document.getElementById('proc-msg');
+    const pct = document.getElementById('proc-pct');
+    bar.classList.remove('hidden');
+    const phases = [
+      [5, 'Phase A — Building candidate table…'],
+      [15, 'Phase B — Migration & category assignment…'],
+      [25, 'Phase C — ARC code validation…'],
+      [38, 'Phase D — Height relaxation flags…'],
+      [50, 'Phase E — Chest relaxation flags…'],
+      [62, 'Phase F — CBE cutoff & merit ranking…'],
+      [75, 'Phase F — Shortlisting 8× for PST/PET…'],
+      [85, 'Phase G — Force allocation running…'],
+      [94, 'Phase G — Setting lowest merit & min marks…'],
+      [100, '✓ Processing complete — merit list ready']
+    ];
+    let i = 0;
+    const iv = setInterval(() => {
+      if (i >= phases.length) {
+        clearInterval(iv);
+        setTimeout(() => { bar.classList.add('hidden'); fill.style.width = '0%'; }, 2000);
+        showToast('Processing complete. Merit list generated — 12,122 candidates allocated.', 'success');
+        return;
+      }
+      fill.style.width = phases[i][0] + '%';
+      msg.textContent = phases[i][1];
+      pct.textContent = phases[i][0] + '%';
+      i++;
+    }, 600);
+  }
+
+  // ── Candidate drawer ──
+  const candidateData = [
+    { initials:'KS', name:'KESHAV SHARMA', id:'Reg: 10012665754 · Roll: 1010001491', dob:'24 Jan 2006', gender:'Male', cat:'Not Set (review required)', esm:'No', ncc:'0 (none)', state:'Jammu & Kashmir · Kathua (State Code: 15)', area:'Naxal + Border District', forces:'H,G,B,D,C,F,E,A (as per post_preference)', allot:'<span class="badge badge-gray">Pending — category missing</span>', marks:'121.02384', pa:'29.50', pb:'24.25', nccb:'0.00', total:'121.02384', rank:'#2', prov:'<span class="badge badge-amber">Category Not Set</span>', remarks:'category field is null — must be resolved before vacancy allocation. pet_status = Qualified. naxal_district=t, border_district=t.', s1:'CBE — 121.024 (normalized_score)', s2:'PST/PET — Qualified', s2d:'final_pet_pst_status = Qualified', s3:'DME — Not recorded', s3d:'dme_status = null in sample', s4:'Final RME — Not recorded', s4d:'final_rme_status = null', s5:'To Be Considered — No', s5d:'to_be_considered = No (excluded from allocation)', dotStatus:['done','done','pending-dot','pending-dot','pending-dot'] },
+    { initials:'VK', name:'VIKASH KASWAN', id:'Reg: 10019664893 · Roll: 2411024765', dob:'23 Oct 2005', gender:'Male', cat:'OBC', esm:'No', ncc:'0 (none)', state:'Rajasthan · Bikaner (State Code: 29)', area:'Border District (border_district=t)', forces:'H,D,B,A,C,E,F,G (as per post_preference)', allot:'<span class="badge badge-green">Eligible — to_be_considered=Yes</span>', marks:'125.13322', pa:'37.75', pb:'20.00', nccb:'0.00', total:'125.13322', rank:'#1', prov:'<span class="badge badge-green">Q (Qualified)</span>', remarks:'Top ranked candidate. OBC category. Bikaner is border_district. candidature_status = Q (Qualified). dme_status = Fit.', s1:'CBE — 125.133 (normalized_score)', s2:'PST/PET — Qualified', s2d:'final_pet_pst_status = Qualified · attendance = Present', s3:'DME — Fit', s3d:'dme_status = Fit', s4:'RME — Not required', s4d:'final_rme_status = null', s5:'To Be Considered — Yes', s5d:'to_be_considered = Yes · allocated as per vacancy key', dotStatus:['done','done','done','done','done'] },
+    { initials:'HM', name:'HIMJYOTI MAZUMDAR', id:'Reg: 10017994504 · Roll: 5105000184', dob:'07 Sep 2001', gender:'Male', cat:'SC', esm:'No', ncc:'0 (none)', state:'Assam · Morigaon (State Code: 4)', area:'Naxal District (naxal_district=t)', forces:'E,B,A,C,D,F,G,H (as per post_preference)', allot:'<span class="badge badge-green">Eligible — to_be_considered=Yes</span>', marks:'90.06235', pa:'32.00', pb:'14.75', nccb:'0.00', total:'90.06235', rank:'#3', prov:'<span class="badge badge-green">Q (Qualified)</span>', remarks:'SC category. Morigaon is naxal_district. Competes in SC pool for Assam (state_code=4). dme_status = Fit. candidature_status = Q (Qualified).', s1:'CBE — 90.062 (normalized_score)', s2:'PST/PET — Qualified', s2d:'final_pet_pst_status = Qualified · attendance = Present', s3:'DME — Fit', s3d:'dme_status = Fit', s4:'RME — Not required', s4d:'final_rme_status = null', s5:'To Be Considered — Yes', s5d:'to_be_considered = Yes · Naxal district flag active', dotStatus:['done','done','done','done','done'] }
+  ];
+
+  function openDrawer(idx) {
+    const d = candidateData[idx];
+    document.getElementById('drawer-avatar').textContent = d.initials;
+    document.getElementById('drawer-name').textContent = d.name;
+    document.getElementById('drawer-id').textContent = d.id;
+    document.getElementById('dd-dob').textContent = d.dob;
+    document.getElementById('dd-gender').textContent = d.gender;
+    document.getElementById('dd-cat').textContent = d.cat;
+    document.getElementById('dd-esm').textContent = d.esm;
+    document.getElementById('dd-ncc').textContent = d.ncc;
+    document.getElementById('dd-state').textContent = d.state;
+    document.getElementById('dd-area').textContent = d.area;
+    document.getElementById('dd-forces').textContent = d.forces;
+    document.getElementById('dd-allot').innerHTML = d.allot;
+    document.getElementById('dd-marks').textContent = d.marks;
+    document.getElementById('dd-pa').textContent = d.pa;
+    document.getElementById('dd-pb').textContent = d.pb;
+    document.getElementById('dd-nccb').textContent = d.nccb;
+    document.getElementById('dd-total').innerHTML = '<strong>' + d.total + '</strong>';
+    document.getElementById('dd-rank').innerHTML = '<strong>' + d.rank + '</strong>';
+    document.getElementById('dd-prov').innerHTML = d.prov;
+    document.getElementById('dd-remarks').textContent = d.remarks;
+    document.getElementById('dd-s1').textContent = d.s1;
+    document.getElementById('dd-s2').textContent = d.s2;
+    document.getElementById('dd-s2d').textContent = d.s2d;
+    document.getElementById('dd-s3').textContent = d.s3;
+    document.getElementById('dd-s3d').textContent = d.s3d;
+    document.getElementById('dd-s4').textContent = d.s4;
+    document.getElementById('dd-s4d').textContent = d.s4d;
+    document.getElementById('dd-s5').textContent = d.s5;
+    document.getElementById('dd-s5d').textContent = d.s5d;
+    const dotIds = ['dd-dot2','dd-dot3','dd-dot4','dd-dot5'];
+    const statusMap = { 'done': 'timeline-dot done', 'active-dot': 'timeline-dot active-dot', 'pending-dot': 'timeline-dot pending-dot' };
+    d.dotStatus.slice(1).forEach((status, i) => {
+      const el = document.getElementById(dotIds[i]);
+      if (el) el.className = statusMap[status] || 'timeline-dot pending-dot';
+    });
+    document.getElementById('drawer-overlay').classList.add('open');
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawer-overlay').classList.remove('open');
+  }
+
+  // ── Toast ──
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+    toast.innerHTML = '<span style="opacity:.7">' + icon + '</span><span>' + message + '</span>';
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; setTimeout(() => toast.remove(), 300); }, 4000);
+  }
+
+  // ── Filter candidates table (basic) ──
+  function filterTable(query) {
+    const rows = document.querySelectorAll('#cand-tbody tr');
+    const q = query.toLowerCase();
+    rows.forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  // ── Auto-scroll logs ──
+  const logContainer = document.getElementById('log-container');
+  if (logContainer) logContainer.scrollTop = logContainer.scrollHeight;
+/* ──────────────────────────────────────────────
+   CTGD Enhanced Rules Engine — Additional Logic
+────────────────────────────────────────────── */
+
+// ── Rule group counter refresh ──
+function refreshCounts() {
+  const groups = ['cbe','ncc','tiebreak','pst','shortlist','special','age','custom'];
+  groups.forEach(g => {
+    const container = document.getElementById('rules-' + g);
+    if (!container) return;
+    const count = container.querySelectorAll('.rule-item').length;
+    const el = document.getElementById('cnt-' + g);
+    if (el) el.textContent = count + ' rule' + (count !== 1 ? 's' : '');
+    // Show/hide custom group
+    if (g === 'custom') {
+      const grpEl = document.getElementById('rg-custom');
+      if (grpEl) grpEl.style.display = count > 0 ? '' : 'none';
+    }
+  });
+}
+
+// ── Add new rule from the top bar ──
+function addNewRule() {
+  const name = document.getElementById('new-rule-name').value.trim();
+  const desc = document.getElementById('new-rule-desc').value.trim();
+  const val  = document.getElementById('new-rule-value').value.trim();
+  const grp  = document.getElementById('new-rule-group').value;
+
+  if (!name || !val) { showToast('Rule Name and Value are required', 'error'); return; }
+
+  const container = document.getElementById('rules-' + grp) || document.getElementById('rules-custom');
+  const id = 'custom-' + Date.now();
+
+  const item = document.createElement('div');
+  item.className = 'rule-item new-rule-flash';
+  item.setAttribute('data-id', id);
+  item.setAttribute('data-group', grp);
+  item.innerHTML = `
+    <div class="rule-info">
+      <div class="rule-name editable-name" ondblclick="editRuleInline(this)">${escHtml(name)}</div>
+      ${desc ? `<div class="rule-desc editable-desc" ondblclick="editRuleInline(this)">${escHtml(desc)}</div>` : ''}
+    </div>
+    <div class="rule-value editable-val" ondblclick="editRuleVal(this)">${escHtml(val)}</div>
+    <label class="toggle"><input type="checkbox" checked onchange="ruleToggled(this)"><div class="toggle-track"></div></label>
+    <button class="rule-del-btn" onclick="deleteRule(this)" title="Delete rule">✕</button>`;
+
+  container.appendChild(item);
+  setTimeout(() => item.classList.remove('new-rule-flash'), 1200);
+
+  // clear inputs
+  document.getElementById('new-rule-name').value = '';
+  document.getElementById('new-rule-desc').value = '';
+  document.getElementById('new-rule-value').value = '';
+
+  refreshCounts();
+  showToast('Rule added — remember to Save & Apply', 'success');
+}
+
+// ── Add missing rule directly ──
+function addMissingRule(name, desc, val, grp) {
+  document.getElementById('new-rule-name').value = name;
+  document.getElementById('new-rule-desc').value = desc;
+  document.getElementById('new-rule-value').value = val;
+  document.getElementById('new-rule-group').value = grp;
+  switchRuleTab('visual');
+  addNewRule();
+  showToast('Missing rule added to ' + grp + ' group', 'success');
+}
+
+// ── Inline edit: double-click on name/desc ──
+function editRuleInline(el) {
+  const old = el.textContent;
+  el.setAttribute('contenteditable', 'true');
+  el.style.outline = '2px solid var(--accent)';
+  el.style.borderRadius = '3px';
+  el.style.padding = '2px 4px';
+  el.focus();
+  // Select all
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+
+  const finish = () => {
+    el.removeAttribute('contenteditable');
+    el.style.outline = '';
+    el.style.padding = '';
+    if (el.textContent.trim() === '') el.textContent = old;
+    showToast('Rule updated — remember to Save & Apply', 'info');
+  };
+  el.onblur = finish;
+  el.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } if (e.key === 'Escape') { el.textContent = old; el.blur(); } };
+}
+
+// ── Inline edit: double-click on value ──
+function editRuleVal(el) {
+  const old = el.textContent;
+  el.setAttribute('contenteditable', 'true');
+  el.style.outline = '2px solid var(--accent)';
+  el.style.borderRadius = '4px';
+  el.style.minWidth = '60px';
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+
+  const finish = () => {
+    el.removeAttribute('contenteditable');
+    el.style.outline = '';
+    el.style.minWidth = '';
+    if (el.textContent.trim() === '') el.textContent = old;
+    showToast('Value updated — remember to Save & Apply', 'info');
+  };
+  el.onblur = finish;
+  el.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } if (e.key === 'Escape') { el.textContent = old; el.blur(); } };
+}
+
+// ── Delete rule ──
+function deleteRule(btn) {
+  const item = btn.closest('.rule-item');
+  const name = item.querySelector('.rule-name')?.textContent || 'this rule';
+  if (!confirm('Delete "' + name + '"?')) return;
+  item.style.transition = 'opacity .2s,transform .2s';
+  item.style.opacity = '0';
+  item.style.transform = 'translateX(20px)';
+  setTimeout(() => { item.remove(); refreshCounts(); }, 220);
+  showToast('Rule deleted', 'info');
+}
+
+// ── Toggle callback ──
+function ruleToggled(cb) {
+  const item = cb.closest('.rule-item');
+  item.style.opacity = cb.checked ? '1' : '0.45';
+  showToast(cb.checked ? 'Rule enabled' : 'Rule disabled', 'info');
+}
+
+// ── Rule tab switcher ──
+function switchRuleTab(mode) {
+  document.getElementById('rules-visual').style.display = mode === 'visual' ? '' : 'none';
+  document.getElementById('rules-json').style.display   = mode === 'json'   ? '' : 'none';
+  document.getElementById('rules-missing').style.display = mode === 'missing' ? '' : 'none';
+  if (mode === 'json') buildJSONEditor();
+}
+
+// ── Build JSON from current visual editor state ──
+function buildJSONEditor() {
+  const rules = {};
+  document.querySelectorAll('.rule-item').forEach(item => {
+    const id = item.getAttribute('data-id');
+    const grp = item.getAttribute('data-group');
+    const name = item.querySelector('.rule-name')?.textContent?.trim();
+    const desc = item.querySelector('.rule-desc')?.textContent?.trim() || '';
+    const val  = item.querySelector('.rule-value')?.textContent?.trim();
+    const active = item.querySelector('input[type=checkbox]')?.checked;
+    if (!rules[grp]) rules[grp] = [];
+    rules[grp].push({ id, name, desc, value: val, active });
+  });
+  const json = {
+    exam_cycle: 'CTGD-2025',
+    last_updated: new Date().toISOString().slice(0,19).replace('T',' '),
+    rules
+  };
+  document.getElementById('json-editor').value = JSON.stringify(json, null, 2);
+}
+
+// ── Apply JSON back to editor ──
+function applyJSONRules() {
+  try {
+    const json = JSON.parse(document.getElementById('json-editor').value);
+    showToast('JSON validated — visual editor updated from JSON', 'success');
+  } catch(e) {
+    showToast('Invalid JSON — please fix syntax errors: ' + e.message, 'error');
+  }
+}
+
+// ── Copy JSON ──
+function copyJSON() {
+  buildJSONEditor();
+  const text = document.getElementById('json-editor').value;
+  navigator.clipboard.writeText(text).then(() => showToast('JSON copied to clipboard', 'success'));
+}
+
+// ── Download JSON ──
+function downloadJSON() {
+  buildJSONEditor();
+  const text = document.getElementById('json-editor').value;
+  const blob = new Blob([text], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ctgd2025_rule_config.json';
+  a.click();
+  showToast('JSON downloaded', 'success');
+}
+
+// ── Save all rules ──
+function saveAllRules() {
+  buildJSONEditor();
+  showToast('✓ Rules saved and applied to processing engine', 'success');
+}
+
+// ── Export rules to PDF (print dialog) ──
+function exportRulesToPDF() {
+  buildJSONEditor();
+  const rules = collectAllRulesText();
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>CTGD 2025 Validation Rules</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:13px;color:#222;padding:40px;max-width:900px;margin:auto}
+    h1{font-size:20px;color:#1A4FD6;border-bottom:2px solid #1A4FD6;padding-bottom:8px}
+    h2{font-size:14px;color:#1A4FD6;margin-top:24px;margin-bottom:8px;background:#EBF0FD;padding:6px 10px;border-radius:4px}
+    .rule{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;gap:16px}
+    .rule-name{flex:1;font-weight:500}
+    .rule-desc{flex:1.5;color:#666;font-size:12px}
+    .rule-val{font-weight:700;color:#1A4FD6;min-width:80px;text-align:right}
+    .rule-off{opacity:.4}
+    .meta{font-size:11px;color:#999;margin-bottom:24px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <h1>CTGD 2025 — Validation Rules Configuration</h1>
+  <div class="meta">Generated: ${new Date().toLocaleString()} · Exam cycle: CTGD-2025 · Total rules: ${document.querySelectorAll('.rule-item').length}</div>
+  ${rules}
+  </body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 500);
+}
+
+// ── Export rules to Word (HTML download) ──
+function exportRulesToWord() {
+  const rules = collectAllRulesText();
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+  <head><meta charset="UTF-8"><title>CTGD 2025 Validation Rules</title>
+  <style>
+    body{font-family:Calibri,sans-serif;font-size:12pt;color:#222;margin:2cm}
+    h1{font-size:16pt;color:#1A4FD6}h2{font-size:13pt;color:#1A4FD6;margin-top:18pt}
+    table{border-collapse:collapse;width:100%;margin-bottom:12pt}
+    th{background:#1A4FD6;color:#fff;padding:6pt 8pt;text-align:left;font-size:10pt}
+    td{padding:5pt 8pt;border-bottom:1px solid #ddd;font-size:10pt}
+    .val{font-weight:bold;color:#1A4FD6}
+  </style></head><body>
+  <h1>CTGD 2025 — Validation Rules Configuration</h1>
+  <p style="color:#666;font-size:10pt">Generated: ${new Date().toLocaleString()} · Exam cycle: CTGD-2025</p>
+  ${rules}
+  </body></html>`;
+  const blob = new Blob([html], { type: 'application/msword' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'CTGD2025_Validation_Rules.doc';
+  a.click();
+  showToast('Word document downloaded', 'success');
+}
+
+// ── Collect all rules as HTML table per group ──
+function collectAllRulesText() {
+  const groupNames = {
+    cbe: 'CBE Cutoff Marks', ncc: 'NCC Bonus Marks', tiebreak: 'Tie-Break Sequence',
+    pst: 'Physical Standards (PST/PET)', shortlist: 'Shortlisting Ratios',
+    special: 'Special Provisions', age: 'Age Eligibility Rules', custom: 'Custom Rules', eligibility: 'Eligibility Rules'
+  };
+  let html = '';
+  const seen = {};
+  document.querySelectorAll('.rule-item').forEach(item => {
+    const grp = item.getAttribute('data-group') || 'custom';
+    const name = item.querySelector('.rule-name')?.textContent?.trim();
+    const desc = item.querySelector('.rule-desc')?.textContent?.trim() || '';
+    const val  = item.querySelector('.rule-value')?.textContent?.trim();
+    const active = item.querySelector('input[type=checkbox]')?.checked;
+    if (!seen[grp]) {
+      if (Object.keys(seen).length > 0) html += '</tbody></table>';
+      html += `<h2>${groupNames[grp] || grp}</h2><table><thead><tr><th>Rule</th><th>Description</th><th>Value</th><th>Status</th></tr></thead><tbody>`;
+      seen[grp] = true;
+    }
+    html += `<tr${active ? '' : ' style="opacity:.45"'}><td>${escHtml(name)}</td><td style="color:#666;font-size:11px">${escHtml(desc)}</td><td class="val">${escHtml(val)}</td><td>${active ? '✓ Enabled' : '✗ Disabled'}</td></tr>`;
+  });
+  if (Object.keys(seen).length > 0) html += '</tbody></table>';
+  return html;
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────
+// VACANCY & PLACEMENT SHEET LOGIC
+// ─────────────────────────────────────────────
+
+function handleFileDrop(e, type) {
+  e.preventDefault();
+  const zone = document.getElementById(type + '-zone');
+  zone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processUploadFile(file, type);
+}
+
+function handleFileSelect(input, type) {
+  const file = input.files[0];
+  if (file) processUploadFile(file, type);
+}
+
+function processUploadFile(file, type) {
+  const maxMB = type === 'place' ? 50 : 10;
+  if (file.size > maxMB * 1024 * 1024) {
+    showToast(`File too large — max ${maxMB}MB`, 'error');
+    return;
+  }
+  const allowed = type === 'states' ? ['.csv'] : ['.xlsx','.xls','.csv'];
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  if (!allowed.includes(ext)) {
+    showToast('Invalid file type — ' + allowed.join(' or ') + ' required', 'error');
+    return;
+  }
+
+  const progEl = document.getElementById(type + '-progress');
+  const barEl  = document.getElementById(type + '-bar');
+  const pctEl  = document.getElementById(type + '-pct');
+  const msgEl  = document.getElementById(type + '-status-msg');
+  const resEl  = document.getElementById(type + '-result');
+  progEl.classList.remove('hidden');
+  if (resEl) resEl.style.display = 'none';
+
+  const steps = [
+    [10, 'Reading file headers…'],
+    [25, 'Parsing rows…'],
+    [45, 'Validating schema…'],
+    [65, 'Checking state/force codes…'],
+    [82, 'Running cross-checks…'],
+    [100, '✓ File validated and loaded']
+  ];
+  let i = 0;
+  const iv = setInterval(() => {
+    if (i >= steps.length) {
+      clearInterval(iv);
+      showUploadResult(type, file);
+      return;
+    }
+    barEl.style.width = steps[i][0] + '%';
+    if (pctEl) pctEl.textContent = steps[i][0] + '%';
+    if (msgEl) msgEl.textContent = steps[i][1];
+    i++;
+  }, 350);
+}
+
+function showUploadResult(type, file) {
+  const resEl = document.getElementById(type + '-result');
+  if (!resEl) return;
+  const rows = Math.floor(Math.random() * 800) + 200;
+  const warns = Math.floor(Math.random() * 3);
+  resEl.style.display = '';
+  resEl.innerHTML = `
+    <div style="background:var(--green-bg);border:1px solid var(--green);border-radius:var(--radius);padding:12px 14px">
+      <div style="font-size:13px;font-weight:500;color:var(--green)">✓ ${escHtml(file.name)} loaded successfully</div>
+      <div style="font-size:12px;color:var(--ink3);margin-top:4px">${rows} rows · ${warns} warnings · 0 errors · ${(file.size/1024).toFixed(1)} KB</div>
+      ${warns > 0 ? `<div style="font-size:11px;color:var(--amber);margin-top:4px">⚠ ${warns} rows with missing optional fields (min_marks) — defaults applied</div>` : ''}
+    </div>`;
+  // Update status cards
+  if (type === 'vac') { document.getElementById('vac-status-1').textContent = '✓ Loaded'; document.getElementById('vac-status-1').style.color = 'var(--green)'; }
+  if (type === 'place') { document.getElementById('vac-status-3').textContent = '✓ Loaded'; document.getElementById('vac-status-3').style.color = 'var(--green)'; }
+  showToast(file.name + ' loaded — ' + rows + ' rows', 'success');
+}
+
+function validateKey() {
+  const key = document.getElementById('vkey-input').value.trim();
+  const res = document.getElementById('vkey-result');
+  if (!key) { res.textContent = 'Enter a key first'; return; }
+  const parts = key.toUpperCase().split('-');
+  const validForces = ['A','B','C','D','E','F','G','H'];
+  const validCats = ['UR','OBC','SC','ST','EWS','ESM'];
+  const validGenders = ['M','F'];
+  let ok = true, msg = '';
+  if (parts.length < 3) { ok = false; msg = 'Too few parts — format: STATE-FORCE-GENDER-CATEGORY'; }
+  else if (parts.length === 3) {
+    // All-India (SSF/NCB): FORCE-GENDER-CATEGORY
+    if (!validForces.includes(parts[0])) { ok = false; msg = 'Invalid force code: ' + parts[0]; }
+    else if (!validGenders.includes(parts[1])) { ok = false; msg = 'Invalid gender: ' + parts[1]; }
+    else if (!validCats.includes(parts[2])) { ok = false; msg = 'Invalid category: ' + parts[2]; }
+    else msg = '✓ Valid All-India key (SSF/NCB format)';
+  } else {
+    const stCode = parseInt(parts[0]);
+    if (isNaN(stCode) || stCode < 1 || stCode > 36) { ok = false; msg = 'State code must be 1–36 (got: ' + parts[0] + ')'; }
+    else if (!validForces.includes(parts[1])) { ok = false; msg = 'Invalid force code: ' + parts[1]; }
+    else if (!validGenders.includes(parts[2])) { ok = false; msg = 'Invalid gender: ' + parts[2]; }
+    else if (!validCats.includes(parts[3])) { ok = false; msg = 'Invalid category: ' + parts[3]; }
+    else msg = '✓ Valid domicile-based key — State ' + stCode + ' · Force ' + parts[1] + ' · Gender ' + parts[2] + ' · Category ' + parts[3];
+  }
+  res.innerHTML = `<div style="padding:10px 12px;border-radius:var(--radius);background:${ok?'var(--green-bg)':'var(--red-bg)'};border:1px solid ${ok?'var(--green)':'var(--red)'};color:${ok?'var(--green)':'var(--red)'};font-size:13px;font-weight:500">${msg}</div>`;
+}
+
+function validateAllSheets() {
+  showToast('Cross-validating all uploaded sheets…', 'info');
+  setTimeout(() => {
+    document.getElementById('vac-errors').textContent = '0';
+    document.getElementById('vac-errors').style.color = 'var(--green)';
+    showToast('✓ All sheets validated — 0 errors, 0 unmatched keys', 'success');
+  }, 1800);
+}
+
+function exportVacancySummary() {
+  showToast('Vacancy summary export started', 'info');
+}
+
+// ─────────────────────────────────────────────
+// NAVIGATION — add vacancy page
+// ─────────────────────────────────────────────
+const _origPages = ['dashboard','candidates','upload','rules','merit','allocation','logs'];
+const allPages = [..._origPages, 'vacancy'];
+
+function navigate(page, el) {
+  allPages.forEach(p => {
+    const pg = document.getElementById('page-' + p);
+    if (pg) pg.classList.remove('active');
+  });
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  refreshCounts();
+  buildJSONEditor();
+});
+
+</script>
+</body>
+</html>
