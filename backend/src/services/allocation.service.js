@@ -57,8 +57,17 @@ function remainingSlots(row) {
 
 function vacancyCategoryMatches(rowCategory, candidateCategory, isEsm) {
   const rc = String(rowCategory ?? "").trim().toUpperCase();
+  const cc = String(candidateCategory ?? "").trim().toUpperCase();
+  // Relaxation-category candidates (OBC/SC/ST) must not consume open UR seats.
+  // ESM is intentionally exempt from this restriction.
+  const usesRelaxationCategory = cc === "OBC" || cc === "SC" || cc === "ST";
+  if (rc === "UR") {
+    if (usesRelaxationCategory) return false;
+    if (isEsm) return true;
+    return cc === "UR";
+  }
   if (rc === "ESM") return Boolean(isEsm);
-  if (["UR", "OBC", "SC", "ST", "EWS"].includes(rc)) return !isEsm && String(candidateCategory ?? "").trim().toUpperCase() === rc;
+  if (["OBC", "SC", "ST", "EWS"].includes(rc)) return !isEsm && cc === rc;
   return false;
 }
 
