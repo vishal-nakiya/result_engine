@@ -90,6 +90,14 @@ export default function Sidebar({ open = false, onClose = () => {} } = {}) {
       </NavItem>
 
       <div className="nav-section-label">System</div>
+      <NavItem href="/manual" current={is("/manual")} onClick={() => go("/manual")}>
+        <svg className="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M4 3.5h9.5a2.5 2.5 0 0 1 2.5 2.5v10.5H6.5A2.5 2.5 0 0 0 4 19V3.5Z" />
+          <path d="M6.5 16.5H16" />
+          <path d="M7 7h6M7 10h6" />
+        </svg>
+        User Manual
+      </NavItem>
       <NavItem href="/logs" current={is("/logs")} onClick={() => go("/logs")}>
         <svg className="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
           <rect x="3" y="3" width="14" height="14" rx="2" />

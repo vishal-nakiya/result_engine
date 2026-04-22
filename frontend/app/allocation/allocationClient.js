@@ -7,6 +7,7 @@ import AllocationMetaPanel from "./allocationMetaPanel";
 export default function AllocationClient() {
   const [busy, setBusy] = useState(false);
   const [runBusy, setRunBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
   const [error, setError] = useState("");
   const [runMsg, setRunMsg] = useState("");
   const [data, setData] = useState({ page: 1, pageSize: 50, total: 0, rows: [] });
@@ -38,6 +39,101 @@ export default function AllocationClient() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function toCsvValue(value) {
+    if (value == null) return "";
+    const s = typeof value === "string" ? value : String(value);
+    if (s.includes('"') || s.includes(",") || s.includes("\n") || s.includes("\r")) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  }
+
+  function downloadCsv(filename, rows) {
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportFilename() {
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    return `force-allocation-${stamp}.csv`;
+  }
+
+  async function fetchAllRows() {
+    const pageSize = 200;
+    let page = 1;
+    let total = 0;
+    const out = [];
+    while (true) {
+      const qs = new URLSearchParams();
+      qs.set("page", String(page));
+      qs.set("pageSize", String(pageSize));
+      if (forceCode) qs.set("forceCode", forceCode);
+      if (state) qs.set("state", state);
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(`${apiBase()}/allocation?${qs.toString()}`);
+      // eslint-disable-next-line no-await-in-loop
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error?.message ?? "Failed to export allocation");
+      const rows = Array.isArray(json?.rows) ? json.rows : [];
+      total = Number(json?.total ?? out.length + rows.length);
+      out.push(...rows);
+      if (!rows.length || out.length >= total) break;
+      page += 1;
+    }
+    return out;
+  }
+
+  async function exportAllCsv() {
+    setExportBusy(true);
+    setError("");
+    try {
+      const allRows = await fetchAllRows();
+      const header = [
+        "meritRank",
+        "rollNo",
+        "name",
+        "forceCode",
+        "vacancyRowKey",
+        "stateCode",
+        "area",
+        "categoryAllocated",
+        "stateAllocated",
+        "districtAllocated",
+      ];
+      const lines = [
+        header.map(toCsvValue).join(","),
+        ...allRows.map((r) =>
+          [
+            r.meritRank,
+            r.rollNo,
+            r.name,
+            r.forceCode,
+            r.vacancyRowKey,
+            r.stateCode,
+            r.area,
+            r.categoryAllocated,
+            r.stateAllocated,
+            r.districtAllocated,
+          ]
+            .map(toCsvValue)
+            .join(",")
+        ),
+      ];
+      downloadCsv(exportFilename(), lines);
+    } catch (e) {
+      setError(String(e?.message ?? e));
+    } finally {
+      setExportBusy(false);
+    }
+  }
 
   async function runAllocationOnly() {
     setRunBusy(true);
@@ -108,6 +204,9 @@ export default function AllocationClient() {
             />
             <button className="btn btn-primary btn-sm" type="button" onClick={load} disabled={busy}>
               {busy ? "Loading…" : "Apply"}
+            </button>
+            <button className="btn btn-ghost btn-sm" type="button" onClick={exportAllCsv} disabled={busy || exportBusy}>
+              {exportBusy ? "Exporting..." : "Export CSV (all data)"}
             </button>
             {error ? <span style={{ color: "var(--red)", fontSize: 12, alignSelf: "center" }}>{error}</span> : null}
           </div>

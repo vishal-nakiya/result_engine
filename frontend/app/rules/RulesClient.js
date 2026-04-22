@@ -241,13 +241,12 @@ const RULE_DEFS = {
   },
   special: {
     title: "Special Provisions",
-    count: "8 rules",
+    count: "7 rules",
     items: [
       { id: "sp-pwd", ruleKey: "special.pwdPolicy", group: "special", name: "PwD — reject at pre-processing stage", desc: "Persons with Disabilities are NOT eligible for these posts (combat forces)", fmt: (v) => String(v ?? "REJECT") },
       { id: "sp-esm-pst", ruleKey: "special.esmPstPetPolicy", group: "special", name: "ESM — PET exempt; PST measurements recorded only", desc: "ESM not required to run PET race; measurements taken for records but no qualifying cutoff", fmt: (v) => String(v ?? "EXEMPT") },
       { id: "sp-esm-quota", ruleKey: "special.esmQuotaPercent", group: "special", name: "ESM quota — 10% per category", desc: "If suitable ESM not available, vacancies filled by non-ESM of respective category", fmt: (v) => String(v ?? "10%") },
       { id: "sp-pregnant", ruleKey: "special.pregnancyTuPolicy", group: "special", name: "Pregnant (≥12 weeks) → Temporarily Unfit (TU)", desc: "Not eliminated; vacancy reserved; re-examined 6 weeks after confinement", fmt: (v) => String(v ?? "TU") },
-      { id: "sp-area-seq", ruleKey: "special.areaAllocationSequence", group: "special", name: "Area allocation sequence — Border before Naxal", desc: "If district is both Border Guarding AND Naxal: Border vacancies filled first, then Naxal", fmt: (v) => String(v ?? "SEQ") },
       { id: "sp-debarred", ruleKey: "special.debarredDbCheck", group: "special", name: "Debarred DB check — name+DOB+father match", desc: "Match on name/father/mother + DOB where is_active=true; flagged as D", fmt: (v) => String(v ?? "ACTIVE") },
       { id: "sp-ssf-allindia", ruleKey: "special.ssfAllIndia", group: "special", name: "SSF vacancies — All India basis", desc: "SSF (Secretariat Security Force) filled on All India basis; not state-wise", fmt: (v) => String(v ?? "ALL-IN") },
       { id: "sp-domicile", ruleKey: "special.domicileMismatchAction", group: "special", name: "Domicile mismatch → instant cancellation", desc: "If Domicile Cert state/district ≠ application form state/district, candidature cancelled", fmt: (v) => String(v ?? "CANCEL") },
@@ -264,6 +263,21 @@ const RULE_DEFS = {
         name: "Tie-break priority order",
         desc: "Set the order used when final marks are tied (Priority 1 → 4).",
         kind: "tiebreak_order",
+        fmt: (v) => (Array.isArray(v) ? v.join(", ") : "—"),
+      },
+    ],
+  },
+  allocation: {
+    title: "Allocation Rules",
+    count: "1 rule",
+    items: [
+      {
+        id: "allocation-priority-order",
+        ruleKey: "allocation.priorityOrder",
+        group: "allocation",
+        name: "Allocation priority order",
+        desc: "Set area priority for allocation (Priority 1 -> 3).",
+        kind: "allocation_priority_order",
         fmt: (v) => (Array.isArray(v) ? v.join(", ") : "—"),
       },
     ],
@@ -337,6 +351,7 @@ function groupFromRuleKey(ruleKey) {
   if (k.startsWith("special.")) return "special";
   if (k.startsWith("eligibility.")) return "eligibility";
   if (k.startsWith("merit.")) return "merit";
+  if (k.startsWith("allocation.")) return "allocation";
   return "custom";
 }
 
@@ -409,7 +424,7 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
   }, []);
 
   const grouped = useMemo(() => {
-    const out = { eligibility: [], merit: [], cbe: [], ncc: [], pst: [], special: [], tiebreak: [], age: [], shortlist: [], custom: [] };
+    const out = { eligibility: [], merit: [], cbe: [], ncc: [], pst: [], special: [], tiebreak: [], allocation: [], age: [], shortlist: [], custom: [] };
     for (const r of rules) {
       const g = r.group || "custom";
       if (!out[g]) out[g] = [];
@@ -628,6 +643,8 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
                             </select>
                           ) : kind === "tiebreak_order" ? (
                             <TieBreakOrderEditor value={r?.value} onCommit={(v) => upsertLocal(def, { value: v })} />
+                          ) : kind === "allocation_priority_order" ? (
+                            <AllocationPriorityOrderEditor value={r?.value} onCommit={(v) => upsertLocal(def, { value: v })} />
                           ) : kind === "education_level" ? (
                             <select
                               className="filter-select"
@@ -688,8 +705,8 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
             ))}
           </div>
 
-          <div>
-            <div className="rule-group" id="rg-pst" style={{ display: grouped.pst.length ? "" : "none" }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div className="rule-group" id="rg-pst" style={{ display: grouped.pst.length ? "" : "none", order: 3 }}>
               <div className="rule-group-header">
                 <div className="rule-group-title">{RULE_DEFS.pst.title}</div>
                 <span />
@@ -744,7 +761,7 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
               </div>
             </div>
 
-            <div className="rule-group" id="rg-special" style={{ display: grouped.special.length ? "" : "none" }}>
+            <div className="rule-group" id="rg-special" style={{ display: grouped.special.length ? "" : "none", order: 4 }}>
               <div className="rule-group-header">
                 <div className="rule-group-title">{RULE_DEFS.special.title}</div>
                 <span />
@@ -799,7 +816,42 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
               </div>
             </div>
 
-            <div className="rule-group" id="rg-custom" style={{ display: grouped.custom.length ? "" : "none" }}>
+            <div className="rule-group" id="rg-allocation" style={{ display: grouped.allocation.length ? "" : "none", order: 1 }}>
+              <div className="rule-group-header">
+                <div className="rule-group-title">{RULE_DEFS.allocation.title}</div>
+                <span />
+              </div>
+              <div id="rules-allocation">
+                {RULE_DEFS.allocation.items.map((def) => {
+                  const r = ruleByKey.get(def.ruleKey);
+                  const kind = def.kind;
+                  return (
+                    <div className="rule-item" data-id={def.id} data-group={def.group} key={def.id}>
+                      <div className="rule-info">
+                        <div className="rule-name editable-name">{def.name}</div>
+                        <div className="rule-desc editable-desc">{r?.description ?? def.desc}</div>
+                      </div>
+                      <div className="rule-value editable-val">
+                        {kind === "allocation_priority_order" ? (
+                          <AllocationPriorityOrderEditor value={r?.value} onCommit={(v) => upsertLocal(def, { value: v })} />
+                        ) : (
+                          def.fmt(r?.value)
+                        )}
+                      </div>
+                      <label className="toggle">
+                        <input type="checkbox" checked={Boolean(r?.isActive ?? true)} onChange={(e) => upsertLocal(def, { isActive: e.target.checked })} />
+                        <div className="toggle-track"></div>
+                      </label>
+                      <button className="rule-del-btn" type="button" onClick={() => deleteRuleKey(def.ruleKey)} title="Delete rule">
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rule-group" id="rg-custom" style={{ display: grouped.custom.length ? "" : "none", order: 2 }}>
               <div className="rule-group-header">
                 <div className="rule-group-title">Custom Rules</div>
                 <span />
@@ -1251,6 +1303,12 @@ const TIEBREAK_OPTIONS = [
   { id: "nameAZ", label: "Name A→Z" },
 ];
 
+const ALLOCATION_PRIORITY_OPTIONS = [
+  { id: "Naxal", label: "Naxal" },
+  { id: "Border", label: "Border" },
+  { id: "General", label: "General" },
+];
+
 function normalizeTieBreakSequence(v) {
   const base = Array.isArray(v) ? v.map(String) : [];
   const seen = new Set();
@@ -1296,6 +1354,62 @@ function TieBreakOrderEditor({ value, onCommit }) {
           <div style={{ fontSize: 11, color: "var(--ink3)" }}>{`Priority ${i + 1}`}</div>
           <select className="filter-select" style={{ fontSize: 12, padding: "6px 8px" }} value={seq[i]} onChange={(e) => setAt(i, e.target.value)}>
             {TIEBREAK_OPTIONS.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function normalizeAllocationPriorityOrder(v) {
+  const base = Array.isArray(v) ? v.map(String) : [];
+  const seen = new Set();
+  const out = [];
+  for (const x of base) {
+    if (!ALLOCATION_PRIORITY_OPTIONS.some((o) => o.id === x)) continue;
+    if (seen.has(x)) continue;
+    seen.add(x);
+    out.push(x);
+  }
+  for (const o of ALLOCATION_PRIORITY_OPTIONS) {
+    if (!seen.has(o.id)) out.push(o.id);
+  }
+  return out.slice(0, 3);
+}
+
+function AllocationPriorityOrderEditor({ value, onCommit }) {
+  const seq = normalizeAllocationPriorityOrder(value);
+
+  function setAt(idx, nextId) {
+    const next = [...seq];
+    next[idx] = nextId;
+    // ensure each priority is unique by swapping duplicate selections
+    const used = new Map();
+    for (let i = 0; i < next.length; i += 1) {
+      const id = next[i];
+      if (!used.has(id)) used.set(id, i);
+      else {
+        const j = used.get(id);
+        const tmp = next[j];
+        next[j] = next[i];
+        next[i] = tmp;
+        used.set(id, i);
+      }
+    }
+    onCommit(next);
+  }
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 8, alignItems: "center", minWidth: 300 }}>
+      {[0, 1, 2].map((i) => (
+        <div key={i} style={{ display: "contents" }}>
+          <div style={{ fontSize: 11, color: "var(--ink3)" }}>{`Priority ${i + 1}`}</div>
+          <select className="filter-select" style={{ fontSize: 12, padding: "6px 8px" }} value={seq[i]} onChange={(e) => setAt(i, e.target.value)}>
+            {ALLOCATION_PRIORITY_OPTIONS.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.label}
               </option>

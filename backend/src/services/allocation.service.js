@@ -1,6 +1,7 @@
 import { db } from "../db/knex.js";
 import { newId } from "../db/ids.js";
 import { logService } from "./log.service.js";
+import { rulesEngine } from "./rules.engine.js";
 
 /** post_code in vacancy CSV is the force letter (A–H). */
 const ALL_INDIA_POSTS = new Set(["G", "H"]);
@@ -27,6 +28,23 @@ function areaBucket(areaRaw) {
   if (a === "B") return "Border";
   if (a === "N") return "Naxal";
   return "General";
+}
+
+function normalizeAllocationPriorityOrder(v) {
+  const allowed = new Set(["Naxal", "Border", "General"]);
+  const base = Array.isArray(v) ? v.map((x) => String(x ?? "").trim()) : [];
+  const out = [];
+  const seen = new Set();
+  for (const x of base) {
+    if (!allowed.has(x)) continue;
+    if (seen.has(x)) continue;
+    seen.add(x);
+    out.push(x);
+  }
+  for (const x of ["Naxal", "Border", "General"]) {
+    if (!seen.has(x)) out.push(x);
+  }
+  return out.slice(0, 3);
 }
 
 function remainingSlots(row) {
@@ -145,7 +163,7 @@ function domicileFlagsFromMaster(masterRows, stateCode, districtText) {
   };
 }
 
-function slotsForCandidatePdfOrder(rows, flags) {
+function slotsForCandidatePdfOrder(rows, flags, priorityOrder) {
   const out = [];
   const seen = new Set();
   const push = (arr) => {
@@ -155,9 +173,14 @@ function slotsForCandidatePdfOrder(rows, flags) {
       out.push(r);
     }
   };
-  if (flags.isNaxal) push(rows.filter((r) => areaBucket(r.area) === "Naxal"));
-  if (flags.isBorder) push(rows.filter((r) => areaBucket(r.area) === "Border"));
-  push(rows.filter((r) => areaBucket(r.area) === "General"));
+  const order = normalizeAllocationPriorityOrder(priorityOrder);
+  for (const bucket of order) {
+    if (bucket === "Naxal" && !flags.isNaxal) continue;
+    if (bucket === "Border" && !flags.isBorder) continue;
+    push(rows.filter((r) => areaBucket(r.area) === bucket));
+  }
+  // Safety fallback for unknown/missing area values.
+  push(rows.filter((r) => !["Naxal", "Border", "General"].includes(areaBucket(r.area))));
   return out;
 }
 
@@ -269,6 +292,8 @@ async function loadClearedCandidatesOrdered(k) {
 
 async function allocateFromVacancyRows(k) {
   await k("allocation").del();
+  const activeRules = await rulesEngine.getActiveRules();
+  const allocationPriorityOrder = activeRules["allocation.priorityOrder"];
 
   const vr = await k("vacancy_rows as v")
     .leftJoin("states as s", "s.state_code", "v.state_code")
@@ -356,7 +381,7 @@ async function allocateFromVacancyRows(k) {
     };
 
     const stateRows = slots.filter((r) => baseFilter(r) && !ALL_INDIA_POSTS.has(String(r.post_code ?? "").toUpperCase()));
-    const orderedState = slotsForCandidatePdfOrder(stateRows.filter((r) => r.state_code === stateCode), flags);
+    const orderedState = slotsForCandidatePdfOrder(stateRows.filter((r) => r.state_code === stateCode), flags, allocationPriorityOrder);
     if (tryPickFromList(orderedState)) pickSource = "state_pool";
 
     if (!chosen) {
@@ -364,7 +389,7 @@ async function allocateFromVacancyRows(k) {
         if (!baseFilter(r)) return false;
         return ALL_INDIA_POSTS.has(String(r.post_code ?? "").toUpperCase());
       });
-      const orderedIndia = slotsForCandidatePdfOrder(indiaCandidates, flags);
+      const orderedIndia = slotsForCandidatePdfOrder(indiaCandidates, flags, allocationPriorityOrder);
       if (tryPickFromList(orderedIndia)) pickSource = "all_india_pool";
     }
 
