@@ -12,7 +12,6 @@ export default async function DashboardPage() {
     <AppShell>
       <div className="topbar">
         <div className="topbar-left">
-          <div className="topbar-title">Dashboard</div>
           <div className="topbar-sub">Last processed: — · Vacancy table: {totalVacancies} slots · 8 forces</div>
         </div>
         <div className="topbar-actions">

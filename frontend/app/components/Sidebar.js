@@ -33,17 +33,6 @@ export default function Sidebar({ open = false, onClose = () => {} } = {}) {
         </button>
       </div>
 
-      <div className="nav-section-label">Overview</div>
-      <NavItem href="/dashboard" current={is("/dashboard")} onClick={() => go("/dashboard")}>
-        <svg className="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <rect x="3" y="3" width="6" height="6" rx="1" />
-          <rect x="3" y="11" width="6" height="6" rx="1" />
-          <rect x="11" y="3" width="6" height="6" rx="1" />
-          <rect x="11" y="11" width="6" height="6" rx="1" />
-        </svg>
-        Dashboard
-      </NavItem>
-
       <div className="nav-section-label">Data Management</div>
       <NavItem href="/candidates" current={is("/candidates")} onClick={() => go("/candidates")}>
         <svg className="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">

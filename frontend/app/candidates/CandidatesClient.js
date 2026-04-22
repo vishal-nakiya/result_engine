@@ -298,10 +298,6 @@ export default function CandidatesClient({ initial }) {
           >
             <div className="upload-icon-big">📄</div>
             <div className="upload-title">{uploadBusy ? "Uploading…" : "Drop Candidate_Master.csv here (or click)"}</div>
-            <div className="upload-hint">
-              Required: registrationNo, rollno, category (UR/OBC/SC/ST/EWS/ESM), gender (1=F,2=M), state_ut_code_considered,
-              total_marks_new, dob (DD-MM-YYYY) · Max 50 MB
-            </div>
             {uploadErr ? <div style={{ marginTop: 10, color: "var(--red)", fontSize: 12 }}>{uploadErr}</div> : null}
           </div>
         </div>
