@@ -40,6 +40,32 @@ vacancyRouter.get("/", async (req, res) => {
   res.json(data);
 });
 
+vacancyRouter.post("/upload/preview", uploadDisk.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: { message: "file is required (multipart field name: file)" } });
+  const lower = (req.file.originalname || "").toLowerCase();
+  if (!lower.endsWith(".csv")) {
+    return res.status(400).json({ error: { message: "Only .csv files are supported for this upload" } });
+  }
+  try {
+    const { uploadId } = await uploadSessionService.createFromMulterFile(req.file);
+    const preview = await vacancyService.previewVacancyCsvFromUpload({ uploadId });
+    res.json(preview);
+  } catch (e) {
+    const status = e?.statusCode ?? 400;
+    res.status(status).json({ error: { message: e?.message ?? "Preview failed" } });
+  }
+});
+
+vacancyRouter.post("/upload/commit", async (req, res) => {
+  try {
+    const result = await vacancyService.commitMappedVacancyCsv(req.body ?? {});
+    res.json(result);
+  } catch (e) {
+    const status = e?.statusCode ?? 400;
+    res.status(status).json({ error: { message: e?.message ?? "Commit failed" } });
+  }
+});
+
 vacancyRouter.post("/upload", uploadDisk.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: { message: "file is required (multipart field name: file)" } });
   const lower = (req.file.originalname || "").toLowerCase();

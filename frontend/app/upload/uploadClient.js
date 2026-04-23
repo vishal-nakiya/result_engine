@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { apiBase } from "../lib/api";
+import { useProcessing } from "../lib/processing";
 
 function normalizeHeader(h) {
   return String(h ?? "")
@@ -144,6 +145,7 @@ function computeSummary(preview, mapping) {
 
 export default function UploadClient() {
   const fileRef = useRef(null);
+  const processing = useProcessing();
   const [activeStage, setActiveStage] = useState("cbe");
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -187,6 +189,7 @@ export default function UploadClient() {
     setBanner(null);
     setValidateBanner(null);
     try {
+      processing.start(`Uploading ${STAGES.find((s) => s.id === activeStage)?.label ?? activeStage} file…`);
       const csvFile = await fileToCsvFile(file);
       const fd = new FormData();
       fd.append("file", csvFile);
@@ -217,6 +220,7 @@ export default function UploadClient() {
       setMapping({});
     } finally {
       setBusy(false);
+      processing.stop();
     }
   }
 
@@ -226,6 +230,7 @@ export default function UploadClient() {
     setError("");
     setCommitResult(null);
     try {
+      processing.start(`Committing ${STAGES.find((s) => s.id === activeStage)?.label ?? activeStage} rows…`);
       const commitEndpoint =
         activeStage === "pst"
           ? "pst/commit"
@@ -252,6 +257,7 @@ export default function UploadClient() {
       setError(String(e?.message ?? e));
     } finally {
       setBusy(false);
+      processing.stop();
     }
   }
 
@@ -291,6 +297,7 @@ export default function UploadClient() {
     setProcessMsg("");
     setBusy(true);
     try {
+      processing.start("Running processing pipeline…");
       const res = await fetch(`${apiBase()}/process/run`, { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error?.message ?? "Processing failed");
@@ -305,6 +312,7 @@ export default function UploadClient() {
       setBanner({ kind: "error", text: String(e?.message ?? e) });
     } finally {
       setBusy(false);
+      processing.stop();
     }
   }
 

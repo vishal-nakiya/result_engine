@@ -3,6 +3,25 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
+import { ProcessingProvider, useProcessing } from "../lib/processing";
+
+function ProcessingBar() {
+  const { state } = useProcessing();
+  if (!state.active) return null;
+  const pct = state.percent == null ? null : Math.round(state.percent);
+  return (
+    <div className="processing-bar" id="proc-bar">
+      <div className="spinner"></div>
+      <span id="proc-msg">{state.message || "Processing…"}</span>
+      <div className="progress-track">
+        <div className="progress-fill" id="proc-fill" style={{ width: pct == null ? "35%" : `${pct}%` }}></div>
+      </div>
+      <span id="proc-pct" style={{ fontSize: 12, opacity: 0.8 }}>
+        {pct == null ? "…" : `${pct}%`}
+      </span>
+    </div>
+  );
+}
 
 export default function AppShell({ children }) {
   const router = useRouter();
@@ -41,7 +60,7 @@ export default function AppShell({ children }) {
   }, [pathname]);
 
   return (
-    <>
+    <ProcessingProvider>
       <Sidebar open={sidebarOpen} onClose={closeSidebar} />
       <div className={`sidebar-overlay${sidebarOpen ? " show" : ""}`} onClick={closeSidebar} />
       {manualOpen ? (
@@ -73,20 +92,11 @@ export default function AppShell({ children }) {
             ☰
           </button>
         </div>
-        <div className="processing-bar hidden" id="proc-bar">
-          <div className="spinner"></div>
-          <span id="proc-msg">Running result processing pipeline…</span>
-          <div className="progress-track">
-            <div className="progress-fill" id="proc-fill" style={{ width: "0%" }}></div>
-          </div>
-          <span id="proc-pct" style={{ fontSize: 12, opacity: 0.8 }}>
-            0%
-          </span>
-        </div>
+        <ProcessingBar />
         {children}
       </div>
       <div className="toast-container" id="toast-container"></div>
-    </>
+    </ProcessingProvider>
   );
 }
 

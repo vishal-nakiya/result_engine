@@ -1,6 +1,9 @@
 import fs from "node:fs";
-import { parse } from "csv-parse/sync";
+import { createReadStream } from "node:fs";
+import { parse as parseStream } from "csv-parse";
+import { parse as parseSync } from "csv-parse/sync";
 import { db } from "../db/knex.js";
+import { uploadSessionService } from "./upload-session.service.js";
 
 function normalizeHeader(h) {
   return String(h ?? "")
@@ -18,6 +21,33 @@ function buildHeaderMap(headers) {
   }
   return map;
 }
+
+const VACANCY_COLUMNS = [
+  "state_code",
+  "state",
+  "gender",
+  "post_code",
+  "force",
+  "area",
+  "category",
+  "category_code",
+  "vacancies",
+  "initial",
+  "current",
+  "allocated",
+  "left_vacancy",
+  "allocated_hc",
+  "allocated_hc_prev",
+  "key",
+  "min_marks_prev",
+  "min_marks_parta_prev",
+  "min_marks_partb_prev",
+  "min_marks_cand_dob_prev",
+  "min_marks",
+  "min_marks_parta",
+  "min_marks_partb",
+  "min_marks_cand_dob",
+];
 
 const REQUIRED_NORM = new Set([
   "state_code",
@@ -79,9 +109,13 @@ function dateOrNull(v) {
   return `${m[1]}-${m[2]}-${m[3]}`;
 }
 
-function csvRowToDb(headerMap, rec) {
+function csvRowToDb(headerOrMapping, rec, mode = "headerMap") {
   const col = (norm) => {
-    const c = headerMap.get(norm);
+    if (mode === "mapping") {
+      const mapped = headerOrMapping?.[norm];
+      return mapped ? rec[mapped] : "";
+    }
+    const c = headerOrMapping.get(norm);
     return c == null ? "" : rec[c];
   };
 
@@ -138,9 +172,56 @@ function validateHeaders(headers) {
   return headerMap;
 }
 
+function streamParserOptions() {
+  return {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+    bom: true,
+    relax_quotes: true,
+    relax_column_count: true,
+  };
+}
+
+async function parsePreviewFromFile(filePath, limit = 25) {
+  const records = [];
+  let headers = [];
+  let totalRows = 0;
+
+  await new Promise((resolve, reject) => {
+    const parser = parseStream(streamParserOptions());
+    const rs = createReadStream(filePath);
+
+    parser.on("readable", () => {
+      let record;
+      // eslint-disable-next-line no-cond-assign
+      while ((record = parser.read())) {
+        totalRows += 1;
+        if (!headers.length) headers = Object.keys(record);
+        if (records.length < limit) records.push(record);
+      }
+    });
+    parser.on("error", reject);
+    parser.on("end", resolve);
+    rs.on("error", reject);
+    rs.pipe(parser);
+  });
+
+  return { headers, previewRows: records, totalRows };
+}
+
+function inferAutoMapping(headers) {
+  const mapping = {};
+  const normalizedToOriginal = new Map(headers.map((h) => [normalizeHeader(h), h]));
+  for (const col of VACANCY_COLUMNS) {
+    if (normalizedToOriginal.has(col)) mapping[col] = normalizedToOriginal.get(col);
+  }
+  return mapping;
+}
+
 export async function importVacancyCsvFromPath(filePath) {
   const raw = fs.readFileSync(filePath, "utf8");
-  const records = parse(raw, {
+  const records = parseSync(raw, {
     columns: true,
     skip_empty_lines: true,
     trim: true,
@@ -216,6 +297,167 @@ export async function importVacancyCsvFromPath(filePath) {
     rowsUpserted: dbRows.length,
     statesTouched: statePairs.size,
     rowsInFile: records.length,
+  };
+}
+
+export async function previewVacancyCsvFromUpload({ uploadId }) {
+  const session = uploadSessionService.get(uploadId);
+  if (!session?.filePath) {
+    const err = new Error("Upload session not found (re-upload vacancy CSV)");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const { headers, previewRows, totalRows } = await parsePreviewFromFile(session.filePath);
+  const autoMapping = inferAutoMapping(headers);
+  const unmapped = VACANCY_COLUMNS.filter((c) => !autoMapping[c]);
+  return {
+    uploadId,
+    headers,
+    vacancyColumns: VACANCY_COLUMNS,
+    autoMapping,
+    unmapped,
+    previewRows,
+    totalRows,
+  };
+}
+
+export async function commitMappedVacancyCsv({ uploadId, mapping }) {
+  const filePath = uploadId ? uploadSessionService.get(uploadId)?.filePath : null;
+  if (!filePath) {
+    const err = new Error("Upload session not found (re-upload vacancy CSV)");
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!mapping || typeof mapping !== "object") {
+    const err = new Error("mapping is required");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const required = ["state_code", "state", "gender", "post_code", "force", "area", "category", "key"];
+  for (const r of required) {
+    if (!mapping[r]) {
+      const err = new Error(`Missing required mapping for ${r}`);
+      err.statusCode = 400;
+      throw err;
+    }
+  }
+
+  const k = db();
+  const ts = new Date();
+  const statePairs = new Map();
+  const dbRows = [];
+
+  const errors = [];
+  let totalErrors = 0;
+  const errorStats = {};
+
+  function addError(row, error) {
+    totalErrors += 1;
+    errorStats[error] = (errorStats[error] ?? 0) + 1;
+    if (errors.length < 2000) errors.push({ row, error });
+  }
+
+  let rowNo = 1;
+  await new Promise((resolve, reject) => {
+    const parser = parseStream(streamParserOptions());
+    const rs = createReadStream(filePath);
+    parser.on("data", (row) => {
+      parser.pause();
+      try {
+        const allEmpty = Object.values(row ?? {}).every((v) => String(v ?? "").trim() === "");
+        if (!allEmpty) {
+          const out = csvRowToDb(mapping, row, "mapping");
+          const { _state_name, ...rest } = out;
+          statePairs.set(rest.state_code, _state_name);
+          dbRows.push(rest);
+        }
+        rowNo += 1;
+        parser.resume();
+      } catch (e) {
+        addError(rowNo, e?.message ?? "Invalid row");
+        rowNo += 1;
+        parser.resume();
+      }
+    });
+    parser.on("error", reject);
+    parser.on("end", resolve);
+    rs.on("error", reject);
+    rs.pipe(parser);
+  });
+
+  if (!dbRows.length && !totalErrors) {
+    const err = new Error("CSV has no data rows");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const chunkSize = 200;
+  await k.transaction(async (trx) => {
+    for (const [code, name] of statePairs) {
+      // eslint-disable-next-line no-await-in-loop
+      await trx("states")
+        .insert({ state_code: code, state_name: name, created_at: ts, updated_at: ts })
+        .onConflict("state_code")
+        .merge(["state_name", "updated_at"]);
+    }
+
+    for (let i = 0; i < dbRows.length; i += chunkSize) {
+      const chunk = dbRows.slice(i, i + chunkSize).map((r) => ({
+        ...r,
+        created_at: ts,
+        updated_at: ts,
+      }));
+      // eslint-disable-next-line no-await-in-loop
+      await trx("vacancy_rows")
+        .insert(chunk)
+        .onConflict("row_key")
+        .merge([
+          "state_code",
+          "gender",
+          "post_code",
+          "force",
+          "area",
+          "category",
+          "category_code",
+          "vacancies",
+          "initial",
+          "current_count",
+          "allocated",
+          "left_vacancy",
+          "allocated_hc",
+          "allocated_hc_prev",
+          "min_marks_prev",
+          "min_marks_parta_prev",
+          "min_marks_partb_prev",
+          "min_marks_cand_dob_prev",
+          "min_marks",
+          "min_marks_parta",
+          "min_marks_partb",
+          "min_marks_cand_dob",
+          "updated_at",
+        ]);
+    }
+  });
+
+  if (uploadId) await uploadSessionService.cleanup(uploadId);
+
+  if (totalErrors) {
+    return {
+      ok: false,
+      rowsUpserted: dbRows.length,
+      statesTouched: statePairs.size,
+      totalErrors,
+      errorStats,
+      errors: errors.slice(0, 2000),
+    };
+  }
+
+  return {
+    ok: true,
+    rowsUpserted: dbRows.length,
+    statesTouched: statePairs.size,
   };
 }
 
@@ -317,5 +559,7 @@ export async function listVacancies({ page = 1, pageSize = 50, q = "" } = {}) {
 
 export const vacancyService = {
   importVacancyCsvFromPath,
+  previewVacancyCsvFromUpload,
+  commitMappedVacancyCsv,
   listVacancies,
 };

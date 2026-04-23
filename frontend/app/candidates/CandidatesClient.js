@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiBase } from "../lib/api";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useProcessing } from "../lib/processing";
 
 function normalizeHeader(h) {
   return String(h ?? "")
@@ -94,6 +95,7 @@ function areaTypeFromRaw(raw) {
 export default function CandidatesClient({ initial }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const processing = useProcessing();
   const [qInput, setQInput] = useState(searchParams.get("q") ?? "");
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [category, setCategory] = useState(searchParams.get("category") ?? "");
@@ -151,6 +153,7 @@ export default function CandidatesClient({ initial }) {
     setCommitErr("");
     setCommitResult(null);
     try {
+      processing.start("Uploading candidate master CSV…");
       const fd = new FormData();
       fd.append("file", file);
       const pres = await fetch(`${apiBase()}/upload/csv`, { method: "POST", body: fd });
@@ -163,6 +166,7 @@ export default function CandidatesClient({ initial }) {
       setUploadErr(String(e?.message ?? e));
     } finally {
       setUploadBusy(false);
+      processing.stop();
     }
   }
 
@@ -189,6 +193,7 @@ export default function CandidatesClient({ initial }) {
     setCommitErr("");
     setCommitResult(null);
     try {
+      processing.start("Committing candidate rows to DB…");
       const cres = await fetch(`${apiBase()}/upload/csv/commit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -203,6 +208,7 @@ export default function CandidatesClient({ initial }) {
       setCommitErr(String(e?.message ?? e));
     } finally {
       setCommitBusy(false);
+      processing.stop();
     }
   }
 
@@ -283,13 +289,19 @@ export default function CandidatesClient({ initial }) {
           />
           <div
             className="upload-zone"
-            style={{ cursor: "pointer" }}
-            onClick={() => fileRef.current?.click()}
+            style={{ cursor: uploadBusy ? "default" : "pointer", position: "relative" }}
+            aria-busy={uploadBusy ? "true" : "false"}
+            onClick={() => {
+              if (uploadBusy) return;
+              fileRef.current?.click();
+            }}
             onDragOver={(e) => {
+              if (uploadBusy) return;
               e.preventDefault();
               e.stopPropagation();
             }}
             onDrop={(e) => {
+              if (uploadBusy) return;
               e.preventDefault();
               e.stopPropagation();
               const f = e.dataTransfer?.files?.[0];
@@ -299,6 +311,12 @@ export default function CandidatesClient({ initial }) {
             <div className="upload-icon-big">📄</div>
             <div className="upload-title">{uploadBusy ? "Uploading…" : "Drop Candidate_Master.csv here (or click)"}</div>
             {uploadErr ? <div style={{ marginTop: 10, color: "var(--red)", fontSize: 12 }}>{uploadErr}</div> : null}
+            {uploadBusy ? (
+              <div className="upload-overlay">
+                <span className="spinner" />
+                Uploading candidate file…
+              </div>
+            ) : null}
           </div>
         </div>
 
