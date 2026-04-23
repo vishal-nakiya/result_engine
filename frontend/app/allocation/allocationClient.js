@@ -4,6 +4,14 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { apiBase } from "../lib/api";
 import AllocationMetaPanel from "./allocationMetaPanel";
 
+function buildPagerPages(curr, last) {
+  if (last <= 7) return Array.from({ length: last }, (_, i) => i + 1);
+  const pages = new Set([1, last, curr, curr - 1, curr + 1, curr - 2, curr + 2]);
+  const arr = Array.from(pages).filter((n) => n >= 1 && n <= last);
+  arr.sort((a, b) => a - b);
+  return arr;
+}
+
 export default function AllocationClient() {
   const [busy, setBusy] = useState(false);
   const [runBusy, setRunBusy] = useState(false);
@@ -11,28 +19,44 @@ export default function AllocationClient() {
   const [error, setError] = useState("");
   const [runMsg, setRunMsg] = useState("");
   const [data, setData] = useState({ page: 1, pageSize: 50, total: 0, rows: [] });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [forceCode, setForceCode] = useState("");
   const [state, setState] = useState("");
   const [basisOpenId, setBasisOpenId] = useState(null);
 
-  async function load() {
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(Number(data.total ?? 0) / pageSize)),
+    [data.total, pageSize]
+  );
+
+  async function load(opts = {}) {
+    const p = opts.page ?? page;
+    const ps = opts.pageSize ?? pageSize;
     setBusy(true);
     setError("");
     try {
       const qs = new URLSearchParams();
-      qs.set("page", "1");
-      qs.set("pageSize", "200");
+      qs.set("page", String(p));
+      qs.set("pageSize", String(ps));
       if (forceCode) qs.set("forceCode", forceCode);
       if (state) qs.set("state", state);
       const res = await fetch(`${apiBase()}/allocation?${qs.toString()}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error?.message ?? "Failed to load");
       setData(json);
+      setPage(Number(json.page) || p);
+      setPageSize(Number(json.pageSize) || ps);
     } catch (e) {
       setError(String(e?.message ?? e));
     } finally {
       setBusy(false);
     }
+  }
+
+  function goToPage(nextPage) {
+    const next = Math.min(totalPages, Math.max(1, nextPage));
+    load({ page: next, pageSize });
   }
 
   useEffect(() => {
@@ -151,7 +175,7 @@ export default function AllocationClient() {
       setRunMsg(
         `Allocated ${json.allocated?.toLocaleString?.() ?? json.allocated} candidate(s) · mode: ${json.mode ?? "—"}${extra}`
       );
-      await load();
+      await load({ page: 1 });
     } catch (e) {
       setError(String(e?.message ?? e));
     } finally {
@@ -160,6 +184,9 @@ export default function AllocationClient() {
   }
 
   const rows = useMemo(() => data.rows ?? [], [data.rows]);
+  const total = Number(data.total ?? 0);
+  const rangeFrom = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeTo = Math.min(page * pageSize, total);
 
   return (
     <div style={{ padding: 28 }}>
@@ -202,7 +229,23 @@ export default function AllocationClient() {
               value={state}
               onChange={(e) => setState(e.target.value)}
             />
-            <button className="btn btn-primary btn-sm" type="button" onClick={load} disabled={busy}>
+            <select
+              className="filter-select"
+              aria-label="Rows per page"
+              value={pageSize}
+              onChange={(e) => {
+                const ps = Number(e.target.value);
+                load({ page: 1, pageSize: ps });
+              }}
+              disabled={busy}
+            >
+              {[25, 50, 100, 200].map((n) => (
+                <option key={n} value={n}>
+                  {n} / page
+                </option>
+              ))}
+            </select>
+            <button className="btn btn-primary btn-sm" type="button" onClick={() => load({ page: 1 })} disabled={busy}>
               {busy ? "Loading…" : "Apply"}
             </button>
             <button className="btn btn-ghost btn-sm" type="button" onClick={exportAllCsv} disabled={busy || exportBusy}>
@@ -276,10 +319,53 @@ export default function AllocationClient() {
             </tbody>
           </table>
         </div>
-      </div>
 
-      <div style={{ fontSize: 12, color: "var(--ink3)" }}>
-        Total rows: <span className="mono">{data.total ?? 0}</span>
+        <div className="pager" style={{ padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
+          <div className="pager-info">
+            Showing {rangeFrom.toLocaleString()}–{rangeTo.toLocaleString()} of {total.toLocaleString()} · Page{" "}
+            <span className="mono">{page}</span> / <span className="mono">{totalPages}</span>
+          </div>
+          <div className="pager-btns">
+            <button className="pager-btn" type="button" onClick={() => goToPage(page - 1)} disabled={page <= 1 || busy}>
+              ‹
+            </button>
+            {(() => {
+              const list = buildPagerPages(page, totalPages);
+              const out = [];
+              for (let i = 0; i < list.length; i += 1) {
+                const n = list[i];
+                const prev = list[i - 1];
+                if (i > 0 && n - prev > 1) {
+                  out.push(
+                    <span key={`dots-${prev}-${n}`} style={{ fontSize: 12, color: "var(--ink4)", margin: "0 4px" }}>
+                      …
+                    </span>
+                  );
+                }
+                out.push(
+                  <button
+                    key={n}
+                    className={`pager-btn${n === page ? " active" : ""}`}
+                    type="button"
+                    onClick={() => goToPage(n)}
+                    disabled={busy}
+                  >
+                    {n.toLocaleString()}
+                  </button>
+                );
+              }
+              return out;
+            })()}
+            <button
+              className="pager-btn"
+              type="button"
+              onClick={() => goToPage(page + 1)}
+              disabled={page >= totalPages || busy}
+            >
+              ›
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
