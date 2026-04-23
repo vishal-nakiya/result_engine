@@ -265,6 +265,16 @@ function compareForMeritFactory(sequence) {
 export const processingService = {
   async runPipeline() {
     const k = db();
+    // Prevent concurrent pipeline runs that can deadlock on row updates.
+    // (Postgres advisory locks are scoped to the DB session/connection.)
+    const lockKey = 827364019; // arbitrary constant bigint key for this app
+    const lockRow = await k.raw("select pg_try_advisory_lock(?) as locked", [lockKey]);
+    const locked = Boolean(lockRow?.rows?.[0]?.locked);
+    if (!locked) {
+      const err = new Error("Processing pipeline is already running. Please wait and retry.");
+      err.statusCode = 409;
+      throw err;
+    }
     const hasEvalTable = await k.schema.hasTable("candidate_rule_eval");
     const rules = await rulesEngine.getActiveRules();
     const tieBreakSeq = rules["tiebreak.sequence"];
@@ -275,52 +285,53 @@ export const processingService = {
     const cbeMaxMarksRaw = Number(rules["cbe.maxMarks"] ?? 100);
     const cbeMaxMarks = Number.isFinite(cbeMaxMarksRaw) && cbeMaxMarksRaw > 0 ? cbeMaxMarksRaw : 100;
 
-    await logService.write("info", "Processing pipeline started (CSV-backed mode)");
+    try {
+      await logService.write("info", "Processing pipeline started (CSV-backed mode)");
 
-    const pageSize = 10_000;
-    let page = 0;
-    let processed = 0;
-    let rejectedCount = 0;
-    const meritPool = [];
+      const pageSize = 10_000;
+      let page = 0;
+      let processed = 0;
+      let rejectedCount = 0;
+      const meritPool = [];
 
-    while (true) {
-      const batch = await k("candidates")
-        .select([
-          "id",
-          "roll_no as rollNo",
-          "name",
-          "dob",
-          "gender",
-          "category",
-          "is_esm as isEsm",
-          "state_code as stateCodeDb",
-          "ncc_cert as nccCert",
-          "marks_cbe as marksCbe",
-          "normalized_marks as normalizedMarks",
-          "part_a_marks as partAMarks",
-          "part_b_marks as partBMarks",
-          "is_pwd as isPwd",
-          "pst_status as pstStatus",
-          "pet_status as petStatus",
-          "dv_result as dvResult",
-          "med_result as medResult",
-          "debarred",
-          "withheld",
-          "status",
-          "raw_data as rawData",
-        ])
-        .orderBy("id", "asc")
-        .offset(page * pageSize)
-        .limit(pageSize);
+      while (true) {
+        const batch = await k("candidates")
+          .select([
+            "id",
+            "roll_no as rollNo",
+            "name",
+            "dob",
+            "gender",
+            "category",
+            "is_esm as isEsm",
+            "state_code as stateCodeDb",
+            "ncc_cert as nccCert",
+            "marks_cbe as marksCbe",
+            "normalized_marks as normalizedMarks",
+            "part_a_marks as partAMarks",
+            "part_b_marks as partBMarks",
+            "is_pwd as isPwd",
+            "pst_status as pstStatus",
+            "pet_status as petStatus",
+            "dv_result as dvResult",
+            "med_result as medResult",
+            "debarred",
+            "withheld",
+            "status",
+            "raw_data as rawData",
+          ])
+          .orderBy("id", "asc")
+          .offset(page * pageSize)
+          .limit(pageSize);
 
-      if (!batch.length) break;
+        if (!batch.length) break;
 
-      const updates = [];
-      const evalRows = [];
+        const updates = [];
+        const evalRows = [];
 
-      for (const c of batch) {
-        processed += 1;
-        const raw = typeof c.rawData === "string" ? JSON.parse(c.rawData) : (c.rawData ?? {});
+        for (const c of batch) {
+          processed += 1;
+          const raw = typeof c.rawData === "string" ? JSON.parse(c.rawData) : (c.rawData ?? {});
 
         // NOTE:
         // to_be_considered / candidature_status gate intentionally removed.
@@ -633,52 +644,57 @@ export const processingService = {
         }
       });
 
-      page += 1;
-    }
+        page += 1;
+      }
 
-    await logService.write("info", "Eligibility pass done", {
-      processed,
-      cleared: meritPool.length,
-      rejected: rejectedCount,
-    });
-
-    // ── Global merit ranking (PDF §14 tie-breaking order) ────────────────────
-    // Sort the full pool globally so that within each state+gender+category sub-pool,
-    // the relative order is also correct (state slots only accept their own candidates).
-    const cmp = compareForMeritFactory(tieBreakSeq);
-    meritPool.sort(cmp);
-
-    // Assign global merit rank (1 = best)
-    const rankUpdates = meritPool.map((c, i) => ({ id: c.id, meritRank: i + 1 }));
-
-    const rankChunkSize = 5_000;
-    for (let i = 0; i < rankUpdates.length; i += rankChunkSize) {
-      const chunk = rankUpdates.slice(i, i + rankChunkSize);
-      // eslint-disable-next-line no-await-in-loop
-      await k.transaction(async (trx) => {
-        for (const u of chunk) {
-          // eslint-disable-next-line no-await-in-loop
-          await trx("candidates")
-            .where({ id: u.id })
-            .update({ merit_rank: u.meritRank, updated_at: trx.fn.now() });
-        }
+      await logService.write("info", "Eligibility pass done", {
+        processed,
+        cleared: meritPool.length,
+        rejected: rejectedCount,
       });
+
+      // ── Global merit ranking (PDF §14 tie-breaking order) ────────────────────
+      // Sort the full pool globally so that within each state+gender+category sub-pool,
+      // the relative order is also correct (state slots only accept their own candidates).
+      const cmp = compareForMeritFactory(tieBreakSeq);
+      meritPool.sort(cmp);
+
+      // Assign global merit rank (1 = best)
+      const rankUpdates = meritPool.map((c, i) => ({ id: c.id, meritRank: i + 1 }));
+
+      const rankChunkSize = 5_000;
+      for (let i = 0; i < rankUpdates.length; i += rankChunkSize) {
+        const chunk = rankUpdates.slice(i, i + rankChunkSize);
+        // Always lock/update rows in a stable order to avoid deadlocks.
+        chunk.sort((a, b) => a.id - b.id);
+        // eslint-disable-next-line no-await-in-loop
+        await k.transaction(async (trx) => {
+          for (const u of chunk) {
+            // eslint-disable-next-line no-await-in-loop
+            await trx("candidates")
+              .where({ id: u.id })
+              .update({ merit_rank: u.meritRank, updated_at: trx.fn.now() });
+          }
+        });
+      }
+
+      await logService.write("info", "Merit ranks assigned", {
+        cleared: meritPool.length,
+        processed,
+      });
+
+      // ── Force allocation ─────────────────────────────────────────────────────
+      const allocationResult = await allocationService.allocateFromMerit();
+      await logService.write("info", "Allocation completed", allocationResult);
+
+      return {
+        processed,
+        cleared: meritPool.length,
+        rejected: rejectedCount,
+        allocation: allocationResult,
+      };
+    } finally {
+      await k.raw("select pg_advisory_unlock(?)", [lockKey]).catch(() => {});
     }
-
-    await logService.write("info", "Merit ranks assigned", {
-      cleared: meritPool.length,
-      processed,
-    });
-
-    // ── Force allocation ─────────────────────────────────────────────────────
-    const allocationResult = await allocationService.allocateFromMerit();
-    await logService.write("info", "Allocation completed", allocationResult);
-
-    return {
-      processed,
-      cleared: meritPool.length,
-      rejected: rejectedCount,
-      allocation: allocationResult,
-    };
   },
 };
