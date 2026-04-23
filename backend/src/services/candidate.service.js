@@ -9,8 +9,8 @@ function asDateOnly(d) {
 }
 
 function dobFromIso(iso) {
-  const d = new Date(`${iso}T00:00:00.000Z`);
-  if (Number.isNaN(d.getTime())) throw new Error(`Invalid date: ${iso}`);
+  const d = dobFromAny(iso);
+  if (!d) throw new Error(`Invalid date: ${iso}`);
   return d;
 }
 

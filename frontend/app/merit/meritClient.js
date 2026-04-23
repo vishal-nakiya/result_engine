@@ -148,11 +148,11 @@ export default function MeritClient() {
         "NCC Cert": r.nccCert ?? "",
         "NCC Bonus": (() => {
           const n = deriveNccBonus(r);
-          return n == null ? "" : Number(n.toFixed(2));
+          return n == null ? "" : String(n);
         })(),
         Final: (() => {
           const n = deriveFinalMarks(r);
-          return n == null ? "" : Number(n.toFixed(3));
+          return n == null ? "" : String(n);
         })(),
         Merit: String(r.status ?? "").toLowerCase() === "cleared" ? "Pass" : "Fail",
         "Why Fail":
@@ -332,8 +332,8 @@ export default function MeritClient() {
         rule: "Merit marks",
         criteria: includeNcc ? "finalMarks = normalized + NCC bonus marks" : "finalMarks = normalized only (no NCC)",
         candidate: includeNcc
-          ? `normalized=${normalized ?? "—"} · nccBonusMarks=${fmtNum(bonusMarks, 2)} · finalMarks=${finalMarks == null ? "—" : fmtNum(finalMarks, 3)}`
-          : `normalized=${normalized ?? "—"} · finalMarks=${finalMarks == null ? "—" : fmtNum(finalMarks, 3)}`,
+          ? `normalized=${normalized ?? "—"} · nccBonusMarks=${fmtNum(bonusMarks)} · finalMarks=${finalMarks == null ? "—" : fmtNum(finalMarks)}`
+          : `normalized=${normalized ?? "—"} · finalMarks=${finalMarks == null ? "—" : fmtNum(finalMarks)}`,
         result: finalMarks == null ? "—" : "Pass",
       });
     }
@@ -341,10 +341,11 @@ export default function MeritClient() {
     return rows;
   }
 
-  function fmtNum(v, digits = 2) {
+  function fmtNum(v) {
+    if (v == null || String(v).trim() === "") return "—";
     const n = Number(v);
-    if (!Number.isFinite(n)) return "—";
-    return n.toFixed(digits);
+    if (!Number.isFinite(n)) return String(v);
+    return String(v);
   }
 
   useEffect(() => {
@@ -524,11 +525,11 @@ export default function MeritClient() {
                   <td className="mono">{r.normalizedMarks ?? "—"}</td>
                   <td className="mono">{r.nccCert ?? "—"}</td>
                   <td className="mono">
-                    {fmtNum(deriveNccBonus(r), 2)}
+                    {fmtNum(deriveNccBonus(r))}
                   </td>
                   <td className="mono">
                     <strong>
-                      {fmtNum(deriveFinalMarks(r), 3)}
+                      {fmtNum(deriveFinalMarks(r))}
                     </strong>
                   </td>
                   <td>

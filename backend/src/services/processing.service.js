@@ -52,6 +52,71 @@ function parseBoolLoose(v) {
   return s === "true" || s === "1" || s === "yes" || s === "y" || s === "t" || s === "positive" || s === "p";
 }
 
+function parseBoolMaybe(v) {
+  if (typeof v === "boolean") return v;
+  if (v == null) return null;
+  const s = String(v).trim().toLowerCase();
+  if (!s) return null;
+  if (["true", "1", "yes", "y", "t", "positive", "p"].includes(s)) return true;
+  if (["false", "0", "no", "n", "f", "negative"].includes(s)) return false;
+  return null;
+}
+
+function normalizeCode(v) {
+  return String(v ?? "").trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function isQualifiedByCode(v, allowed) {
+  const code = normalizeCode(v);
+  if (!code) return true; // Keep missing stage flags non-blocking.
+  return allowed.has(code);
+}
+
+function buildPreMeritRejections({ candidate, raw, rules }) {
+  const reasons = [];
+
+  const pwdNotEligible = hasRule(rules, "eligibility.pwdNotEligible")
+    ? Boolean(rules["eligibility.pwdNotEligible"])
+    : false;
+  const debarredPolicyActive = hasRule(rules, "special.debarredDbCheck")
+    ? normalizeCode(rules["special.debarredDbCheck"]) === "ACTIVE"
+    : false;
+
+  const isPwd = parseBoolMaybe(candidate.isPwd) ?? parseBoolMaybe(rawGet(raw, "is_pwd", "pwd"));
+  const isDebarred = parseBoolMaybe(candidate.debarred) ?? parseBoolMaybe(rawGet(raw, "debarred"));
+  const isWithheld = parseBoolMaybe(candidate.withheld) ?? parseBoolMaybe(rawGet(raw, "withheld"));
+
+  if (pwdNotEligible && isPwd === true) {
+    reasons.push({ code: "PWD_NOT_ELIGIBLE", message: "Candidate marked as PwD while rule excludes PwD." });
+  }
+  if (debarredPolicyActive && isDebarred === true) {
+    reasons.push({ code: "DEBARRED", message: "Candidate marked as debarred." });
+  }
+  if (isWithheld === true) {
+    reasons.push({ code: "WITHHELD", message: "Candidate marked as withheld." });
+  }
+
+  const pstStatus = rawGet(raw, "pst_status", "final_pet_pst_status") ?? candidate.pstStatus;
+  const petStatus = rawGet(raw, "pet_status") ?? candidate.petStatus;
+  const dvResult = rawGet(raw, "dv_result") ?? candidate.dvResult;
+  const medResult = rawGet(raw, "med_result") ?? candidate.medResult;
+
+  if (!isQualifiedByCode(pstStatus, new Set(["T", "Q", "QU", "QUALIFIED", "P", "PASS", "FIT", "TRUE", "Y", "YES", "1"]))) {
+    reasons.push({ code: "PST_NOT_QUALIFIED", message: `PST status not qualified (${String(pstStatus)})` });
+  }
+  if (!isQualifiedByCode(petStatus, new Set(["Q", "QU", "QUALIFIED", "P", "PASS", "FIT", "TRUE", "Y", "YES", "1"]))) {
+    reasons.push({ code: "PET_NOT_QUALIFIED", message: `PET status not qualified (${String(petStatus)})` });
+  }
+  if (!isQualifiedByCode(dvResult, new Set(["Q", "QU", "QUALIFIED", "P", "PASS", "CLEAR", "CLEARED", "FIT", "TRUE", "Y", "YES", "1"]))) {
+    reasons.push({ code: "DV_NOT_QUALIFIED", message: `DV result not qualified (${String(dvResult)})` });
+  }
+  if (!isQualifiedByCode(medResult, new Set(["Q", "QU", "QUALIFIED", "P", "PASS", "FIT", "TRUE", "Y", "YES", "1"]))) {
+    reasons.push({ code: "MED_NOT_QUALIFIED", message: `Medical result not qualified (${String(medResult)})` });
+  }
+
+  return reasons;
+}
+
 
 function parseGender(v) {
   const s = String(v ?? "").trim().toUpperCase();
@@ -70,6 +135,24 @@ function parseEsm(rawCat2, fallback) {
   return Boolean(fallback);
 }
 
+function hasRule(rules, key) {
+  return Object.prototype.hasOwnProperty.call(rules ?? {}, key);
+}
+
+function isAgeValidationEnabled(rules) {
+  const keys = ["age.cutoffDate", "age.minYears", "age.maxYearsUr", "age.dobNotBefore", "age.dobNotLaterThan"];
+  return keys.some((k) => hasRule(rules, k));
+}
+
+function isCbeCutoffEnabled(rules) {
+  return (
+    hasRule(rules, "cbe.cutoff.urEwsEsmPercent") ||
+    hasRule(rules, "cbe.cutoff.obcPercent") ||
+    hasRule(rules, "cbe.cutoff.scstPercent") ||
+    hasRule(rules, "cbe.cutoffPercent")
+  );
+}
+
 function getCbeCutoffMap(rules) {
   const ur = Number(rules["cbe.cutoff.urEwsEsmPercent"]);
   const obc = Number(rules["cbe.cutoff.obcPercent"]);
@@ -85,6 +168,58 @@ function getCbeCutoffMap(rules) {
     };
   }
   return rules["cbe.cutoffPercent"] ?? { UR: 30, OBC: 25, EWS: 25, SC: 20, ST: 20, ESM: 20 };
+}
+
+function getAgeConfig(rules) {
+  const hasYearMode = hasRule(rules, "age.cutoffDate") || hasRule(rules, "age.minYears") || hasRule(rules, "age.maxYearsUr");
+  if (hasYearMode) {
+    const cutoff = hasRule(rules, "age.cutoffDate") ? dobFromAny(rules["age.cutoffDate"]) : null;
+    const minYearsRaw = hasRule(rules, "age.minYears") ? Number(rules["age.minYears"]) : null;
+    const maxYearsUrRaw = hasRule(rules, "age.maxYearsUr") ? Number(rules["age.maxYearsUr"]) : null;
+    const relaxObcRaw = hasRule(rules, "age.relaxOBCYears") ? Number(rules["age.relaxOBCYears"]) : 0;
+    const relaxScStRaw = hasRule(rules, "age.relaxScStYears") ? Number(rules["age.relaxScStYears"]) : 0;
+    const relaxEsmRaw = hasRule(rules, "age.esmRelaxYears") ? Number(rules["age.esmRelaxYears"]) : 0;
+    return {
+      mode: "years",
+      cutoff: cutoff ? asDateOnly(cutoff) : null,
+      minYears: Number.isFinite(minYearsRaw) ? minYearsRaw : null,
+      maxYearsUr: Number.isFinite(maxYearsUrRaw) ? maxYearsUrRaw : null,
+      relaxOBCYears: Number.isFinite(relaxObcRaw) ? relaxObcRaw : 0,
+      relaxScStYears: Number.isFinite(relaxScStRaw) ? relaxScStRaw : 0,
+      relaxEsmYears: Number.isFinite(relaxEsmRaw) ? relaxEsmRaw : 0,
+    };
+  }
+
+  const hasDobWindow = hasRule(rules, "age.dobNotBefore") || hasRule(rules, "age.dobNotLaterThan");
+  if (!hasDobWindow) return null;
+  const minDob = hasRule(rules, "age.dobNotBefore") ? dobFromAny(rules["age.dobNotBefore"]) : null;
+  const maxDob = hasRule(rules, "age.dobNotLaterThan") ? dobFromAny(rules["age.dobNotLaterThan"]) : null;
+  return {
+    mode: "dobWindow",
+    minDob: minDob ? asDateOnly(minDob) : null,
+    maxDob: maxDob ? asDateOnly(maxDob) : null,
+  };
+}
+
+function ageYearsOn(dob, onDate) {
+  if (!(dob instanceof Date) || Number.isNaN(dob.getTime())) return null;
+  if (!(onDate instanceof Date) || Number.isNaN(onDate.getTime())) return null;
+  const d = asDateOnly(dob);
+  const ref = asDateOnly(onDate);
+  let years = ref.getUTCFullYear() - d.getUTCFullYear();
+  const mDiff = ref.getUTCMonth() - d.getUTCMonth();
+  if (mDiff < 0 || (mDiff === 0 && ref.getUTCDate() < d.getUTCDate())) years -= 1;
+  return years;
+}
+
+function maxAgeForCandidate(ageCfg, category, isEsm) {
+  if (!Number.isFinite(Number(ageCfg?.maxYearsUr))) return null;
+  const cat = String(category ?? "").trim().toUpperCase();
+  let extra = 0;
+  if (cat === "OBC") extra += ageCfg.relaxOBCYears;
+  if (cat === "SC" || cat === "ST") extra += ageCfg.relaxScStYears;
+  if (isEsm) extra += ageCfg.relaxEsmYears;
+  return ageCfg.maxYearsUr + extra;
 }
 
 // ── Tie-breaking ─────────────────────────────────────────────────────────────
@@ -134,6 +269,9 @@ export const processingService = {
     const rules = await rulesEngine.getActiveRules();
     const tieBreakSeq = rules["tiebreak.sequence"];
     const cbeCutoffMap = getCbeCutoffMap(rules);
+    const ageValidationEnabled = isAgeValidationEnabled(rules);
+    const cbeCutoffEnabled = isCbeCutoffEnabled(rules);
+    const ageCfg = getAgeConfig(rules);
     const cbeMaxMarksRaw = Number(rules["cbe.maxMarks"] ?? 100);
     const cbeMaxMarks = Number.isFinite(cbeMaxMarksRaw) && cbeMaxMarksRaw > 0 ? cbeMaxMarksRaw : 100;
 
@@ -161,6 +299,13 @@ export const processingService = {
           "normalized_marks as normalizedMarks",
           "part_a_marks as partAMarks",
           "part_b_marks as partBMarks",
+          "is_pwd as isPwd",
+          "pst_status as pstStatus",
+          "pet_status as petStatus",
+          "dv_result as dvResult",
+          "med_result as medResult",
+          "debarred",
+          "withheld",
           "status",
           "raw_data as rawData",
         ])
@@ -222,6 +367,138 @@ export const processingService = {
         const cat1Category = cat1ToCategory(rawGet(raw, "cat1"));
         const effectiveCategory = cat1Category ?? c.category ?? "UR";
         const effectiveIsEsm = parseEsm(rawGet(raw, "cat2"), c.isEsm);
+        const dob = c.dob ? asDateOnly(new Date(c.dob)) : dobFromAny(rawGet(raw, "dob", "dob_new"));
+
+        if (ageValidationEnabled && ageCfg) {
+          if (!dob) {
+            rejectedCount += 1;
+            updates.push({
+              id: c.id,
+              status: "rejected",
+              finalMarks: null,
+              meritRank: null,
+              nccCert: c.nccCert,
+              category: effectiveCategory,
+              isEsm: effectiveIsEsm,
+              gender: parseGender(c.gender) ?? "O",
+              domicileState: null,
+            });
+            if (hasEvalTable) {
+              evalRows.push({
+                candidate_id: c.id,
+                qualified: false,
+                reasons: JSON.stringify([{ code: "DOB_MISSING_OR_INVALID", message: "DOB is missing or invalid for age rule." }]),
+                summary: JSON.stringify({
+                  dobRaw: rawGet(raw, "dob", "dob_new") ?? null,
+                }),
+              });
+            }
+            continue;
+          }
+
+          if (ageCfg.mode === "dobWindow") {
+            if ((ageCfg.minDob && dob < ageCfg.minDob) || (ageCfg.maxDob && dob > ageCfg.maxDob)) {
+              rejectedCount += 1;
+              updates.push({
+                id: c.id,
+                status: "rejected",
+                finalMarks: null,
+                meritRank: null,
+                nccCert: c.nccCert,
+                category: effectiveCategory,
+                isEsm: effectiveIsEsm,
+                gender: parseGender(c.gender) ?? "O",
+                domicileState: null,
+              });
+              if (hasEvalTable) {
+                evalRows.push({
+                  candidate_id: c.id,
+                  qualified: false,
+                  reasons: JSON.stringify([{ code: "AGE_NOT_ELIGIBLE", message: `dob=${dob.toISOString().slice(0, 10)} outside configured DOB range` }]),
+                  summary: JSON.stringify({
+                    dob: dob.toISOString().slice(0, 10),
+                    minDob: ageCfg.minDob?.toISOString?.().slice(0, 10) ?? null,
+                    maxDob: ageCfg.maxDob?.toISOString?.().slice(0, 10) ?? null,
+                  }),
+                });
+              }
+              continue;
+            }
+          } else if (ageCfg.mode === "years") {
+            const ageYears = ageYearsOn(dob, ageCfg.cutoff);
+            const maxAllowedAge = maxAgeForCandidate(ageCfg, effectiveCategory, effectiveIsEsm);
+            const minLimit = Number.isFinite(Number(ageCfg.minYears)) ? Number(ageCfg.minYears) : null;
+            const maxLimit = Number.isFinite(Number(maxAllowedAge)) ? Number(maxAllowedAge) : null;
+            if (
+              !Number.isFinite(ageYears) ||
+              (minLimit != null && ageYears < minLimit) ||
+              (maxLimit != null && ageYears > maxLimit)
+            ) {
+              rejectedCount += 1;
+              updates.push({
+                id: c.id,
+                status: "rejected",
+                finalMarks: null,
+                meritRank: null,
+                nccCert: c.nccCert,
+                category: effectiveCategory,
+                isEsm: effectiveIsEsm,
+                gender: parseGender(c.gender) ?? "O",
+                domicileState: null,
+              });
+              if (hasEvalTable) {
+                evalRows.push({
+                  candidate_id: c.id,
+                  qualified: false,
+                  reasons: JSON.stringify([{ code: "AGE_NOT_ELIGIBLE", message: `ageYears=${ageYears} allowed=${minLimit ?? "NA"}-${maxLimit ?? "NA"}` }]),
+                  summary: JSON.stringify({
+                    dob: dob?.toISOString?.().slice(0, 10) ?? null,
+                    category: effectiveCategory,
+                    isEsm: effectiveIsEsm,
+                    cutoffDate: ageCfg.cutoff?.toISOString?.().slice(0, 10) ?? null,
+                    minYears: minLimit,
+                    maxYearsUr: ageCfg.maxYearsUr,
+                    maxAllowedAge: maxLimit,
+                  }),
+                });
+              }
+              continue;
+            }
+          }
+        }
+
+        const preMeritRejectReasons = buildPreMeritRejections({ candidate: c, raw, rules });
+        if (preMeritRejectReasons.length) {
+          rejectedCount += 1;
+          updates.push({
+            id: c.id,
+            status: "rejected",
+            finalMarks: null,
+            meritRank: null,
+            nccCert: c.nccCert,
+            category: effectiveCategory,
+            isEsm: effectiveIsEsm,
+            gender: parseGender(c.gender) ?? "O",
+            domicileState: null,
+          });
+          if (hasEvalTable) {
+            evalRows.push({
+              candidate_id: c.id,
+              qualified: false,
+              reasons: JSON.stringify(preMeritRejectReasons),
+              summary: JSON.stringify({
+                pstStatus: rawGet(raw, "pst_status", "final_pet_pst_status") ?? c.pstStatus ?? null,
+                petStatus: rawGet(raw, "pet_status") ?? c.petStatus ?? null,
+                dvResult: rawGet(raw, "dv_result") ?? c.dvResult ?? null,
+                medResult: rawGet(raw, "med_result") ?? c.medResult ?? null,
+                isPwd: parseBoolMaybe(c.isPwd) ?? parseBoolMaybe(rawGet(raw, "is_pwd", "pwd")),
+                debarred: parseBoolMaybe(c.debarred) ?? parseBoolMaybe(rawGet(raw, "debarred")),
+                withheld: parseBoolMaybe(c.withheld) ?? parseBoolMaybe(rawGet(raw, "withheld")),
+              }),
+            });
+          }
+          continue;
+        }
 
         // Enforce CBE cutoff rule (category-wise) so low scores fail merit.
         const normalizedScore = Number.isFinite(Number(c.normalizedMarks))
@@ -235,7 +512,7 @@ export const processingService = {
           : (Number.isFinite(marksCbe) ? (marksCbe / cbeMaxMarks) * 100 : null);
         const cutoffCategory = effectiveIsEsm ? "ESM" : effectiveCategory;
         const cutoffPercent = Number(cbeCutoffMap[cutoffCategory] ?? cbeCutoffMap.UR ?? 0);
-        if (!Number.isFinite(scorePercent) || scorePercent < cutoffPercent) {
+        if (cbeCutoffEnabled && (!Number.isFinite(scorePercent) || scorePercent < cutoffPercent)) {
           rejectedCount += 1;
           updates.push({
             id: c.id,
@@ -280,8 +557,6 @@ export const processingService = {
           : Number(rawGet(raw, "part_b_marks", "part_b", "partb_ga") ?? 0);
 
         // ── DOB ───────────────────────────────────────────────────────────────
-        const dob = c.dob ? asDateOnly(new Date(c.dob)) : dobFromAny(rawGet(raw, "dob"));
-
         // ── Gender (prefer DB, fall back to raw_data) ─────────────────────────
         const rawGender = parseGender(rawGet(raw, "gender", "gender_app"));
         const currentGender = parseGender(c.gender);

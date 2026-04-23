@@ -205,6 +205,16 @@ function parseDateDDMMYYYY(v) {
   return null;
 }
 
+const INVALID_NUMBER = Symbol("INVALID_NUMBER");
+
+function parseDecimalText(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const cleaned = s.replace(/,/g, "");
+  if (!/^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(cleaned)) return INVALID_NUMBER;
+  return cleaned;
+}
+
 function normalizeStatus(v) {
   const s = String(v ?? "").trim().toLowerCase();
   if (!s) return null;
@@ -387,20 +397,20 @@ export const csvService = {
         is_esm: mapping.is_esm ? normalizeEsm(get("is_esm")) : false,
         domicile_state: mapping.domicile_state ? String(get("domicile_state") ?? "").trim() || null : null,
         district: mapping.district ? String(get("district") ?? "").trim() || null : null,
-        height: mapping.height ? Number(get("height") ?? NaN) : null,
-        chest: mapping.chest ? Number(get("chest") ?? NaN) : null,
-        weight: mapping.weight ? Number(get("weight") ?? NaN) : null,
+        height: mapping.height ? parseDecimalText(get("height")) : null,
+        chest: mapping.chest ? parseDecimalText(get("chest")) : null,
+        weight: mapping.weight ? parseDecimalText(get("weight")) : null,
         is_pwd: isPwd,
         ncc_cert: mapping.ncc_cert ? normalizeNccCert(get("ncc_cert")) : null,
-        marks_cbe: mapping.marks_cbe ? Number(get("marks_cbe") ?? NaN) : null,
-        normalized_marks: mapping.normalized_marks ? Number(get("normalized_marks") ?? NaN) : null,
-        part_a_marks: mapping.part_a_marks ? Number(get("part_a_marks") ?? NaN) : null,
-        part_b_marks: mapping.part_b_marks ? Number(get("part_b_marks") ?? NaN) : null,
-        part_c_marks: mapping.part_c_marks ? Number(get("part_c_marks") ?? NaN) : null,
-        part_d_english_marks: mapping.part_d_english_marks ? Number(get("part_d_english_marks") ?? NaN) : null,
-        part_d_hindi_marks: mapping.part_d_hindi_marks ? Number(get("part_d_hindi_marks") ?? NaN) : null,
-        ncc_bonus_marks: mapping.ncc_bonus_marks ? Number(get("ncc_bonus_marks") ?? NaN) : null,
-        age_years: mapping.age_years ? Number(get("age_years") ?? NaN) : null,
+        marks_cbe: mapping.marks_cbe ? parseDecimalText(get("marks_cbe")) : null,
+        normalized_marks: mapping.normalized_marks ? parseDecimalText(get("normalized_marks")) : null,
+        part_a_marks: mapping.part_a_marks ? parseDecimalText(get("part_a_marks")) : null,
+        part_b_marks: mapping.part_b_marks ? parseDecimalText(get("part_b_marks")) : null,
+        part_c_marks: mapping.part_c_marks ? parseDecimalText(get("part_c_marks")) : null,
+        part_d_english_marks: mapping.part_d_english_marks ? parseDecimalText(get("part_d_english_marks")) : null,
+        part_d_hindi_marks: mapping.part_d_hindi_marks ? parseDecimalText(get("part_d_hindi_marks")) : null,
+        ncc_bonus_marks: mapping.ncc_bonus_marks ? parseDecimalText(get("ncc_bonus_marks")) : null,
+        age_years: mapping.age_years ? parseDecimalText(get("age_years")) : null,
         arc_code: mapping.arc_code ? String(get("arc_code") ?? "").trim() || null : null,
         post_preference: mapping.post_preference ? String(get("post_preference") ?? "").trim() || null : null,
         state_code: mapping.state_code ? String(get("state_code") ?? "").trim() || null : null,
@@ -438,7 +448,7 @@ export const csvService = {
         "age_years",
       ]) {
         if (data[n] == null) continue;
-        if (!Number.isFinite(data[n])) {
+        if (data[n] === INVALID_NUMBER) {
           addError(rowNo, `Invalid number for ${n}`);
           return;
         }

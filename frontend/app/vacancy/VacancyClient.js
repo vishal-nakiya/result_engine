@@ -178,7 +178,7 @@ export default function VacancyClient({ initial }) {
   }
 
   const rows = data.rows ?? [];
-  const colCount = 24;
+  const colCount = 16;
 
   return (
     <div style={{ padding: 28 }}>
@@ -258,14 +258,6 @@ export default function VacancyClient({ initial }) {
                   <th>allocated_hc</th>
                   <th>allocated_hc_prev</th>
                   <th>key</th>
-                  <th>min_marks_prev</th>
-                  <th>min_marks_parta_prev</th>
-                  <th>min_marks_partb_prev</th>
-                  <th>min_marks_cand_dob_prev</th>
-                  <th>min_marks</th>
-                  <th>min_marks_parta</th>
-                  <th>min_marks_partb</th>
-                  <th>min_marks_cand_dob</th>
                 </tr>
               </thead>
               <tbody>
@@ -294,14 +286,6 @@ export default function VacancyClient({ initial }) {
                       <td className="mono">{fmtCell(r.allocated_hc)}</td>
                       <td className="mono">{fmtCell(r.allocated_hc_prev)}</td>
                       <td className="mono">{fmtCell(r.key)}</td>
-                      <td className="mono">{fmtCell(r.min_marks_prev)}</td>
-                      <td className="mono">{fmtCell(r.min_marks_parta_prev)}</td>
-                      <td className="mono">{fmtCell(r.min_marks_partb_prev)}</td>
-                      <td className="mono">{fmtCell(r.min_marks_cand_dob_prev)}</td>
-                      <td className="mono">{fmtCell(r.min_marks)}</td>
-                      <td className="mono">{fmtCell(r.min_marks_parta)}</td>
-                      <td className="mono">{fmtCell(r.min_marks_partb)}</td>
-                      <td className="mono">{fmtCell(r.min_marks_cand_dob)}</td>
                     </tr>
                   ))
                 )}

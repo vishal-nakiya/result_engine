@@ -284,7 +284,7 @@ const RULE_DEFS = {
   },
   age: {
     title: "Age Eligibility",
-    count: "8 rules",
+    count: "9 rules",
     items: [
       {
         id: "age-dob-range",
@@ -305,6 +305,15 @@ const RULE_DEFS = {
         desc: "Set min age and max age (UR) on cutoff date. Use “No limit” to allow any upper age.",
         kind: "years_range",
         fmt: () => "—",
+      },
+      {
+        id: "age-cutoff-date",
+        ruleKey: "age.cutoffDate",
+        group: "age",
+        name: "Current year/date for age calculation (cutoff date)",
+        desc: "Age in years is calculated as on this date. Example: 01/08/2021.",
+        kind: "date_ddmmyyyy",
+        fmt: (v) => String(v ?? "—"),
       },
       { id: "age-obc", ruleKey: "age.relaxOBCYears", group: "age", name: "Age relaxation — OBC", desc: "Upper age extended by 3 years for OBC candidates", fmt: (v) => `+${Number(v ?? 0)} yrs`, parse: (t) => Number(String(t).replace(/[^0-9.+-]/g, "")) || 0 },
       { id: "age-sc", ruleKey: "age.relaxScStYears", group: "age", name: "Age relaxation — SC/ST", desc: "Upper age extended by 5 years for SC and ST candidates", fmt: (v) => `+${Number(v ?? 0)} yrs`, parse: (t) => Number(String(t).replace(/[^0-9.+-]/g, "")) || 0 },
@@ -391,9 +400,12 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
   const jsonRef = useRef(null);
   const deletedRef = useRef(new Set());
   const [editing, setEditing] = useState(null); // { ruleKey, field }
+  const didInitialLoadRef = useRef(false);
+  const autoSaveTimerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -413,6 +425,7 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
             group: groupFromRuleKey(r.ruleKey),
           }))
         );
+        didInitialLoadRef.current = true;
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -473,6 +486,7 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
 
   async function saveAll() {
     setSaving(true);
+    setSaveMsg("");
     try {
       const payload = {
         rules: rules.map((r) => ({
@@ -488,12 +502,35 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) throw new Error(`Save failed (${res.status})`);
       await res.json();
       deletedRef.current = new Set();
+      setSaveMsg("Rules saved and active.");
+      setTimeout(() => setSaveMsg(""), 1500);
+    } catch (e) {
+      setSaveMsg(String(e?.message ?? "Save failed"));
+      throw e;
     } finally {
       setSaving(false);
     }
   }
+
+  useEffect(() => {
+    if (loading) return;
+    if (!didInitialLoadRef.current) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await saveAll();
+      } catch {
+        // keep local edits; user can retry via Save & Apply
+      }
+    }, 450);
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rules]);
 
   function applyJsonToRules() {
     const text = jsonRef.current?.value ?? "";
@@ -977,6 +1014,7 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
       <div style={{ display: "none" }} aria-hidden="true" />
 
       {saving ? <div style={{ marginTop: 12, fontSize: 12, color: "var(--ink3)" }}>Writing to DB…</div> : null}
+      {!saving && saveMsg ? <div style={{ marginTop: 12, fontSize: 12, color: "var(--green)" }}>{saveMsg}</div> : null}
     </div>
   );
 });
@@ -1015,12 +1053,21 @@ function isValidDdMmYyyy(v) {
   return /^\d{2}\/\d{2}\/\d{4}$/.test(String(v ?? ""));
 }
 
+function toDisplayDdMmYyyy(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return DATE_TEMPLATE;
+  if (isValidDdMmYyyy(s)) return s;
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return DATE_TEMPLATE;
+}
+
 function MatriculationMaskedDdMmYyyy({ value, onCommit }) {
   const inputRef = useRef(null);
-  const [text, setText] = useState(() => normalizeMaskedDateText(isValidDdMmYyyy(value) ? String(value) : DATE_TEMPLATE));
+  const [text, setText] = useState(() => normalizeMaskedDateText(toDisplayDdMmYyyy(value)));
 
   useEffect(() => {
-    setText(normalizeMaskedDateText(isValidDdMmYyyy(value) ? String(value) : DATE_TEMPLATE));
+    setText(normalizeMaskedDateText(toDisplayDdMmYyyy(value)));
   }, [value]);
 
   function segmentFromPos(pos) {

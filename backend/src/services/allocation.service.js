@@ -294,12 +294,7 @@ async function allocateFromVacancyRows(k) {
 
   // Load states reference list
   let statesList = await k("states").select("state_code", "state_name");
-  if (!statesList.length) {
-    const r = await k.raw(
-      "select distinct on (state_code) state_code, state_name from state_district_master order by state_code, district_name"
-    );
-    statesList = Array.isArray(r) ? r : (r?.rows ?? []);
-  }
+  if (!statesList.length) statesList = [];
 
   const slots = vr.map((r) => ({
     ...r,

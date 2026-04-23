@@ -38,16 +38,19 @@ const VACANCY_COLUMNS = [
   "left_vacancy",
   "allocated_hc",
   "allocated_hc_prev",
-  "key",
-  "min_marks_prev",
-  "min_marks_parta_prev",
-  "min_marks_partb_prev",
-  "min_marks_cand_dob_prev",
-  "min_marks",
-  "min_marks_parta",
-  "min_marks_partb",
-  "min_marks_cand_dob",
 ];
+
+const HEADER_ALIASES = {
+  state_code: ["s_code", "statecode", "statecode_considered_app"],
+  state: ["state_name"],
+  category_code: ["c_code", "cat_code"],
+  vacancies: ["vac", "vacancy", "vacancy_count", "total_posts"],
+  left_vacancy: ["left_vac", "leftvac", "left_vacancies"],
+  min_marks: ["co_marks", "cutoff_marks", "cut_off_marks"],
+  min_marks_parta: ["co_parta", "cutoff_parta", "cut_off_parta"],
+  min_marks_partb: ["co_partb", "cutoff_partb", "cut_off_partb"],
+  min_marks_cand_dob: ["co_dob", "cutoff_dob", "cut_off_dob"],
+};
 
 const REQUIRED_NORM = new Set([
   "state_code",
@@ -57,29 +60,25 @@ const REQUIRED_NORM = new Set([
   "force",
   "area",
   "category",
-  "category_code",
   "vacancies",
-  "initial",
-  "current",
-  "allocated",
-  "left_vacancy",
-  "allocated_hc",
-  "allocated_hc_prev",
-  "key",
-  "min_marks_prev",
-  "min_marks_parta_prev",
-  "min_marks_partb_prev",
-  "min_marks_cand_dob_prev",
-  "min_marks",
-  "min_marks_parta",
-  "min_marks_partb",
-  "min_marks_cand_dob",
 ]);
 
 function requireCol(headerMap, norm) {
-  const o = headerMap.get(norm);
+  const o = resolveHeader(headerMap, norm);
   if (!o) throw new Error(`Missing CSV column: ${norm.replace(/_/g, " ")}`);
   return o;
+}
+
+function resolveHeader(headerMap, norm) {
+  if (!headerMap) return null;
+  const direct = headerMap.get(norm);
+  if (direct) return direct;
+  const aliases = HEADER_ALIASES[norm] ?? [];
+  for (const alias of aliases) {
+    const hit = headerMap.get(alias);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 function numOrNull(v) {
@@ -115,22 +114,28 @@ function csvRowToDb(headerOrMapping, rec, mode = "headerMap") {
       const mapped = headerOrMapping?.[norm];
       return mapped ? rec[mapped] : "";
     }
-    const c = headerOrMapping.get(norm);
+    const c = resolveHeader(headerOrMapping, norm);
     return c == null ? "" : rec[c];
   };
 
   const stateCode = String(col("state_code") ?? "").trim();
   const stateName = String(col("state") ?? "").trim();
-  const rowKey = String(col("key") ?? "").trim();
-
-  if (!stateCode) throw new Error("state_code is required on each row");
-  if (!stateName) throw new Error("state is required on each row (used to populate states; not stored on vacancy row)");
-  if (!rowKey) throw new Error("key is required on each row");
-
   const postCode = String(col("post_code") ?? "").trim();
   const forceVal = String(col("force") ?? "").trim();
   const areaVal = String(col("area") ?? "").trim();
   const catVal = String(col("category") ?? "").trim();
+  const categoryCodeRaw = intOrNull(col("category_code"));
+  const rowKeyRaw = String(col("key") ?? "").trim();
+  const genderVal = intRequired(col("gender"), "gender");
+  const rowKey =
+    rowKeyRaw ||
+    [stateCode, genderVal, postCode, forceVal, areaVal, catVal, categoryCodeRaw ?? ""]
+      .map((v) => String(v ?? "").trim())
+      .join("-");
+
+  if (!stateCode) throw new Error("state_code is required on each row");
+  if (!stateName) throw new Error("state is required on each row (used to populate states; not stored on vacancy row)");
+  if (!rowKey) throw new Error("key is required on each row");
   if (!postCode) throw new Error("post_code is required on each row");
   if (!forceVal) throw new Error("force is required on each row");
   if (!areaVal) throw new Error("area is required on each row");
@@ -139,12 +144,12 @@ function csvRowToDb(headerOrMapping, rec, mode = "headerMap") {
   return {
     _state_name: stateName,
     state_code: stateCode,
-    gender: intRequired(col("gender"), "gender"),
+    gender: genderVal,
     post_code: postCode,
     force: forceVal,
     area: areaVal,
     category: catVal,
-    category_code: intOrNull(col("category_code")),
+    category_code: categoryCodeRaw,
     vacancies: intOrNull(col("vacancies")),
     initial: intOrNull(col("initial")),
     current_count: intOrNull(col("current")),
@@ -153,14 +158,14 @@ function csvRowToDb(headerOrMapping, rec, mode = "headerMap") {
     allocated_hc: intOrNull(col("allocated_hc")),
     allocated_hc_prev: intOrNull(col("allocated_hc_prev")),
     row_key: rowKey,
-    min_marks_prev: numOrNull(col("min_marks_prev")),
-    min_marks_parta_prev: numOrNull(col("min_marks_parta_prev")),
-    min_marks_partb_prev: numOrNull(col("min_marks_partb_prev")),
-    min_marks_cand_dob_prev: dateOrNull(col("min_marks_cand_dob_prev")),
-    min_marks: numOrNull(col("min_marks")),
-    min_marks_parta: numOrNull(col("min_marks_parta")),
-    min_marks_partb: numOrNull(col("min_marks_partb")),
-    min_marks_cand_dob: dateOrNull(col("min_marks_cand_dob")),
+    min_marks_prev: null,
+    min_marks_parta_prev: null,
+    min_marks_partb_prev: null,
+    min_marks_cand_dob_prev: null,
+    min_marks: null,
+    min_marks_parta: null,
+    min_marks_partb: null,
+    min_marks_cand_dob: null,
   };
 }
 
@@ -214,7 +219,17 @@ function inferAutoMapping(headers) {
   const mapping = {};
   const normalizedToOriginal = new Map(headers.map((h) => [normalizeHeader(h), h]));
   for (const col of VACANCY_COLUMNS) {
-    if (normalizedToOriginal.has(col)) mapping[col] = normalizedToOriginal.get(col);
+    if (normalizedToOriginal.has(col)) {
+      mapping[col] = normalizedToOriginal.get(col);
+      continue;
+    }
+    const aliases = HEADER_ALIASES[col] ?? [];
+    for (const alias of aliases) {
+      if (normalizedToOriginal.has(alias)) {
+        mapping[col] = normalizedToOriginal.get(alias);
+        break;
+      }
+    }
   }
   return mapping;
 }
@@ -335,7 +350,7 @@ export async function commitMappedVacancyCsv({ uploadId, mapping }) {
     throw err;
   }
 
-  const required = ["state_code", "state", "gender", "post_code", "force", "area", "category", "key"];
+  const required = ["state_code", "state", "gender", "post_code", "force", "area", "category"];
   for (const r of required) {
     if (!mapping[r]) {
       const err = new Error(`Missing required mapping for ${r}`);
