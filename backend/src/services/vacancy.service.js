@@ -142,8 +142,8 @@ function csvRowToDb(headerOrMapping, rec, mode = "headerMap") {
   if (!catVal) throw new Error("category is required on each row");
 
   return {
-    _state_name: stateName,
     state_code: stateCode,
+    state_name: stateName,
     gender: genderVal,
     post_code: postCode,
     force: forceVal,
@@ -251,9 +251,8 @@ export async function importVacancyCsvFromPath(filePath) {
   const statePairs = new Map();
   for (const rec of records) {
     const row = csvRowToDb(headerMap, rec);
-    const { _state_name, ...rest } = row;
-    statePairs.set(rest.state_code, _state_name);
-    dbRows.push(rest);
+    statePairs.set(row.state_code, row.state_name);
+    dbRows.push(row);
   }
 
   const ts = new Date();
@@ -281,6 +280,7 @@ export async function importVacancyCsvFromPath(filePath) {
         .onConflict("row_key")
         .merge([
           "state_code",
+          "state_name",
           "gender",
           "post_code",
           "force",
@@ -384,9 +384,8 @@ export async function commitMappedVacancyCsv({ uploadId, mapping }) {
         const allEmpty = Object.values(row ?? {}).every((v) => String(v ?? "").trim() === "");
         if (!allEmpty) {
           const out = csvRowToDb(mapping, row, "mapping");
-          const { _state_name, ...rest } = out;
-          statePairs.set(rest.state_code, _state_name);
-          dbRows.push(rest);
+          statePairs.set(out.state_code, out.state_name);
+          dbRows.push(out);
         }
         rowNo += 1;
         parser.resume();
@@ -430,6 +429,7 @@ export async function commitMappedVacancyCsv({ uploadId, mapping }) {
         .onConflict("row_key")
         .merge([
           "state_code",
+          "state_name",
           "gender",
           "post_code",
           "force",

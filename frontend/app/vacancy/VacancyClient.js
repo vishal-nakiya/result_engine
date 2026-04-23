@@ -162,7 +162,7 @@ export default function VacancyClient({ initial }) {
       if (!json?.ok) setCommitErr(json?.totalErrors ? `Commit completed with errors (${json.totalErrors})` : "Commit completed with errors");
       else {
         setUploadMsg(
-          `Saved ${json.rowsUpserted?.toLocaleString?.() ?? json.rowsUpserted} row(s); ${json.statesTouched?.toLocaleString?.() ?? json.statesTouched} state code(s) in states table.`
+          `Saved ${json.rowsUpserted?.toLocaleString?.() ?? json.rowsUpserted} row(s) in vacancy_rows.`
         );
         if (fileRef.current) fileRef.current.value = "";
         router.refresh();

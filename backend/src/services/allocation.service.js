@@ -273,7 +273,7 @@ async function allocateFromVacancyRows(k) {
   const activeRules = await rulesEngine.getActiveRules();
   const allocationPriorityOrder = activeRules["allocation.priorityOrder"];
 
-  // Load vacancy rows with state names
+  // Load vacancy rows with canonical state names from states table
   const vr = await k("vacancy_rows as v")
     .leftJoin("states as s", "s.state_code", "v.state_code")
     .select([
@@ -292,9 +292,14 @@ async function allocateFromVacancyRows(k) {
       "v.left_vacancy",
     ]);
 
-  // Load states reference list
-  let statesList = await k("states").select("state_code", "state_name");
+  // Load states reference list from states table
+  let statesList = await k("states")
+    .select("state_code", "state_name")
+    .whereNotNull("state_code")
+    .whereNotNull("state_name");
   if (!statesList.length) statesList = [];
+
+  const stateNameByCode = new Map(statesList.map((s) => [String(s.state_code), String(s.state_name)]));
 
   const slots = vr.map((r) => ({
     ...r,
@@ -436,7 +441,8 @@ async function allocateFromVacancyRows(k) {
     if (c.isEsm && catIns === "ESM") esmAllocatedToEsmSlots += 1;
 
     const domicileLabel = String(c.domicileState ?? "").trim();
-    const stateAllocated = ALL_INDIA_POSTS.has(rowPost) && domicileLabel ? domicileLabel : stateName;
+    const domicileStateName = stateNameByCode.get(String(stateCode ?? "")) ?? domicileLabel;
+    const stateAllocated = ALL_INDIA_POSTS.has(rowPost) && domicileStateName ? domicileStateName : stateName;
     const tieBreakApplied = tiedMarksSet.has(c.finalMarks);
 
     // Build human-readable allocation reason
@@ -494,7 +500,7 @@ async function allocateFromVacancyRows(k) {
       force_code: rowPost,
       category_allocated: catIns,
       state_allocated: stateAllocated || stateName || "—",
-        district_allocated: String(c.districtCode ?? c.district ?? rawGet(c.raw, "district_code", "d_code", "domicile_dist_app") ?? "").trim() || "—",
+      district_allocated: "—",
       vacancy_row_key: chosen.row_key,
       state_code: ALL_INDIA_POSTS.has(rowPost) ? stateCode ?? chosen.state_code : chosen.state_code,
       area: chosen.area ?? null,
@@ -546,7 +552,7 @@ async function allocateFromVacancyRows(k) {
         force_code: rowPost,
         category_allocated: "ESM", // §3.2 fallback: non-ESM fills unfilled ESM slot
         state_allocated: stateName || "—",
-        district_allocated: String(cand.districtCode ?? cand.district ?? rawGet(cand.raw, "district_code", "d_code", "domicile_dist_app") ?? "").trim() || "—",
+        district_allocated: "—",
         vacancy_row_key: esmSlot.row_key,
         state_code: esmSlot.state_code,
         area: esmSlot.area ?? null,

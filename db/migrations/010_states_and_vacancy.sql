@@ -15,10 +15,11 @@ FROM state_district_master
 ORDER BY state_code, district_name
 ON CONFLICT (state_code) DO NOTHING;
 
--- Vacancy rows: state is not stored here — only state_code FK; display name via JOIN states.
+-- Vacancy rows are self-contained for state/district metadata (no state table join needed at runtime).
 CREATE TABLE IF NOT EXISTS vacancy_rows (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  state_code text NOT NULL REFERENCES states (state_code) ON UPDATE CASCADE ON DELETE RESTRICT,
+  state_code text NOT NULL,
+  state_name text NOT NULL,
   gender smallint NOT NULL,
   post_code text NOT NULL,
   force text NOT NULL,
