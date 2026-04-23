@@ -19,7 +19,7 @@ function buildPagerPages(curr, last) {
 }
 
 /** Set to `true` to show the master CSV upload panel on this page. */
-const SHOW_STATE_DISTRICT_UPLOAD = false;
+const SHOW_STATE_DISTRICT_UPLOAD = true;
 
 export default function StateDistrictsClient({ initial }) {
   const router = useRouter();

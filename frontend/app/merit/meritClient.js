@@ -24,6 +24,7 @@ function formatDob(dobIso) {
 export default function MeritClient() {
   const [busy, setBusy] = useState(false);
   const [running, setRunning] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState({ page: 1, pageSize: 50, total: 0, rows: [] });
   const [showAll, setShowAll] = useState(false);
@@ -63,6 +64,115 @@ export default function MeritClient() {
       setError(String(e?.message ?? e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  function deriveNccBonus(r) {
+    const sum = r?.ruleSummary ?? {};
+    const computed = sum?.computed ?? {};
+    const merit = computed?.merit ?? {};
+    const cert = String(r?.nccCert ?? "").trim().toUpperCase();
+    const derivedPercentFromCert = cert === "C" ? 5 : cert === "B" ? 3 : cert === "A" ? 2 : 0;
+    const bonusPercent =
+      merit?.bonusPercent != null
+        ? Number(merit?.bonusPercent) || 0
+        : derivedPercentFromCert;
+    const bonusBase = Number(merit?.bonusBase ?? computed?.cbeCutoff?.maxMarks ?? 100) || 100;
+    const stored = merit?.bonusMarks;
+    const storedNum = Number(stored);
+    const bonusMarks = Number.isFinite(storedNum) ? storedNum : (bonusBase * bonusPercent) / 100;
+    return Number.isFinite(Number(bonusMarks)) ? Number(bonusMarks) : null;
+  }
+
+  function deriveFinalMarks(r) {
+    if (r?.finalMarks != null && String(r.finalMarks).trim() !== "") {
+      const storedFinalNum = Number(r.finalMarks);
+      if (Number.isFinite(storedFinalNum)) return storedFinalNum;
+    }
+    const normalizedNum = Number(r?.normalizedMarks);
+    if (!Number.isFinite(normalizedNum)) return null;
+    const bonus = deriveNccBonus(r);
+    return normalizedNum + Number(bonus || 0);
+  }
+
+  function buildListParams(p, ps) {
+    const params = new URLSearchParams();
+    params.set("page", String(p));
+    params.set("pageSize", String(ps));
+    params.set("includeEval", "true");
+    if (!showAll) params.set("status", "cleared");
+    if (q.trim()) params.set("q", q.trim());
+    if (category) params.set("category", category);
+    if (gender) params.set("gender", gender);
+    if (meritFilterApplied && meritFilterHasContent(meritFilterApplied)) {
+      params.set("filterGroup", JSON.stringify(meritFilterApplied));
+    }
+    return params;
+  }
+
+  async function exportAllExcel() {
+    setExportBusy(true);
+    setError("");
+    try {
+      const allRows = [];
+      const exportPageSize = 500;
+      let exportPage = 1;
+      let total = 0;
+      do {
+        const params = buildListParams(exportPage, exportPageSize);
+        const res = await fetch(`${apiBase()}/candidates?${params.toString()}`, { cache: "no-store" });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error?.message ?? "Failed to export merit list");
+        total = Number(json?.total ?? 0);
+        allRows.push(...(json?.rows ?? []));
+        exportPage += 1;
+      } while (allRows.length < total);
+
+      const ordered = [...allRows].sort((a, b) => {
+        const ar = a.meritRank ?? 999999999;
+        const br = b.meritRank ?? 999999999;
+        if (ar !== br) return ar - br;
+        const af = Number(a.finalMarks ?? a.normalizedMarks ?? 0);
+        const bf = Number(b.finalMarks ?? b.normalizedMarks ?? 0);
+        return bf - af;
+      });
+
+      const sheetRows = ordered.map((r) => ({
+        "Merit Rank": r.meritRank ?? "",
+        "Roll No": r.rollNo ?? "",
+        Name: r.name ?? "",
+        Category: r.category ?? "",
+        Gender: String(r.gender ?? "").slice(0, 1).toUpperCase(),
+        DOB: formatDob(r.dob),
+        Normalized: r.normalizedMarks ?? "",
+        "NCC Cert": r.nccCert ?? "",
+        "NCC Bonus": (() => {
+          const n = deriveNccBonus(r);
+          return n == null ? "" : Number(n.toFixed(2));
+        })(),
+        Final: (() => {
+          const n = deriveFinalMarks(r);
+          return n == null ? "" : Number(n.toFixed(3));
+        })(),
+        Merit: String(r.status ?? "").toLowerCase() === "cleared" ? "Pass" : "Fail",
+        "Why Fail":
+          String(r.status ?? "").toLowerCase() === "cleared"
+            ? ""
+            : Array.isArray(r.ruleReasons) && r.ruleReasons.length
+              ? r.ruleReasons[0]?.code ?? r.ruleReasons[0]?.message ?? ""
+              : "",
+      }));
+
+      const XLSX = await import("xlsx");
+      const ws = XLSX.utils.json_to_sheet(sheetRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Merit List");
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      XLSX.writeFile(wb, `merit-list-${stamp}.xlsx`);
+    } catch (e) {
+      setError(String(e?.message ?? e));
+    } finally {
+      setExportBusy(false);
     }
   }
 
@@ -346,6 +456,9 @@ export default function MeritClient() {
         <button className="btn btn-primary btn-sm" type="button" onClick={runPipeline} disabled={running}>
           {running ? "Running…" : "▶ Run Processing"}
         </button>
+        <button className="btn btn-ghost btn-sm" type="button" onClick={exportAllExcel} disabled={busy || running || exportBusy}>
+          {exportBusy ? "Exporting..." : "Export Excel (all records)"}
+        </button>
         {error ? <span style={{ color: "var(--red)", fontSize: 12, alignSelf: "center" }}>{error}</span> : null}
       </div>
 
@@ -411,51 +524,11 @@ export default function MeritClient() {
                   <td className="mono">{r.normalizedMarks ?? "—"}</td>
                   <td className="mono">{r.nccCert ?? "—"}</td>
                   <td className="mono">
-                    {(() => {
-                      const sum = r.ruleSummary ?? {};
-                      const computed = sum?.computed ?? {};
-                      const merit = computed?.merit ?? {};
-                      const cert = String(r.nccCert ?? "").trim().toUpperCase();
-                      const derivedPercentFromCert = cert === "C" ? 5 : cert === "B" ? 3 : cert === "A" ? 2 : 0;
-                      const bonusPercent =
-                        merit?.bonusPercent != null
-                          ? Number(merit?.bonusPercent) || 0
-                          : derivedPercentFromCert;
-                      const bonusBase = Number(merit?.bonusBase ?? computed?.cbeCutoff?.maxMarks ?? 100) || 100;
-                      const stored = merit?.bonusMarks;
-                      const storedNum = Number(stored);
-                      const bonusMarks = Number.isFinite(storedNum) ? storedNum : (bonusBase * bonusPercent) / 100;
-                      return fmtNum(bonusMarks, 2);
-                    })()}
+                    {fmtNum(deriveNccBonus(r), 2)}
                   </td>
                   <td className="mono">
                     <strong>
-                      {(() => {
-                        if (r.finalMarks != null && String(r.finalMarks).trim() !== "") {
-                          const storedFinalNum = Number(r.finalMarks);
-                          if (Number.isFinite(storedFinalNum)) return fmtNum(storedFinalNum, 3);
-                        }
-
-                        const normalizedNum = Number(r.normalizedMarks);
-                        if (!Number.isFinite(normalizedNum)) return "—";
-
-                        // Derive NCC bonus marks the same way as the NCC bonus column.
-                        const sum = r.ruleSummary ?? {};
-                        const computed = sum?.computed ?? {};
-                        const merit = computed?.merit ?? {};
-                        const cert = String(r.nccCert ?? "").trim().toUpperCase();
-                        const derivedPercentFromCert = cert === "C" ? 5 : cert === "B" ? 3 : cert === "A" ? 2 : 0;
-                        const bonusPercent =
-                          merit?.bonusPercent != null
-                            ? Number(merit?.bonusPercent) || 0
-                            : derivedPercentFromCert;
-                        const bonusBase = Number(merit?.bonusBase ?? computed?.cbeCutoff?.maxMarks ?? 100) || 100;
-                        const stored = merit?.bonusMarks;
-                        const storedNum = Number(stored);
-                        const bonusMarks = Number.isFinite(storedNum) ? storedNum : (bonusBase * bonusPercent) / 100;
-
-                        return fmtNum(normalizedNum + Number(bonusMarks || 0), 3);
-                      })()}
+                      {fmtNum(deriveFinalMarks(r), 3)}
                     </strong>
                   </td>
                   <td>

@@ -31,8 +31,60 @@ function dobFromAny(dateText) {
  */
 function cat1ToCategory(cat1) {
   const v = Number(cat1);
-  const MAP = { 0: "UR", 1: "SC", 2: "ST", 6: "OBC", 9: "EWS" };
+  const MAP = { 0: "UR", 1: "SC", 2: "ST", 6: "OBC", 9: "UR" };
   return MAP[v] ?? null;
+}
+
+function rawGet(raw, ...keys) {
+  if (!raw || typeof raw !== "object") return null;
+  for (const key of keys) {
+    if (raw[key] != null && String(raw[key]).trim() !== "") return raw[key];
+    const upper = String(key).toUpperCase();
+    const lower = String(key).toLowerCase();
+    if (raw[upper] != null && String(raw[upper]).trim() !== "") return raw[upper];
+    if (raw[lower] != null && String(raw[lower]).trim() !== "") return raw[lower];
+  }
+  return null;
+}
+
+function parseBoolLoose(v) {
+  const s = String(v ?? "").trim().toLowerCase();
+  return s === "true" || s === "1" || s === "yes" || s === "y" || s === "t" || s === "positive" || s === "p";
+}
+
+
+function parseGender(v) {
+  const s = String(v ?? "").trim().toUpperCase();
+  if (!s) return null;
+  if (s === "2" || s === "M" || s === "MALE") return "M";
+  if (s === "1" || s === "F" || s === "FEMALE") return "F";
+  if (s === "3" || s === "O" || s === "OTHER") return "O";
+  return null;
+}
+
+function parseEsm(rawCat2, fallback) {
+  const s = String(rawCat2 ?? "").trim().toUpperCase();
+  if (s === "3") return true;
+  if (["Y", "YES", "TRUE", "T", "1"].includes(s)) return true;
+  if (["N", "NO", "FALSE", "F", "0"].includes(s)) return false;
+  return Boolean(fallback);
+}
+
+function getCbeCutoffMap(rules) {
+  const ur = Number(rules["cbe.cutoff.urEwsEsmPercent"]);
+  const obc = Number(rules["cbe.cutoff.obcPercent"]);
+  const scst = Number(rules["cbe.cutoff.scstPercent"]);
+  if (Number.isFinite(ur) || Number.isFinite(obc) || Number.isFinite(scst)) {
+    return {
+      UR: Number.isFinite(ur) ? ur : 0,
+      EWS: Number.isFinite(ur) ? ur : 0,
+      ESM: Number.isFinite(ur) ? ur : 0,
+      OBC: Number.isFinite(obc) ? obc : 0,
+      SC: Number.isFinite(scst) ? scst : 0,
+      ST: Number.isFinite(scst) ? scst : 0,
+    };
+  }
+  return rules["cbe.cutoffPercent"] ?? { UR: 30, OBC: 25, EWS: 25, SC: 20, ST: 20, ESM: 20 };
 }
 
 // ── Tie-breaking ─────────────────────────────────────────────────────────────
@@ -81,6 +133,9 @@ export const processingService = {
     const hasEvalTable = await k.schema.hasTable("candidate_rule_eval");
     const rules = await rulesEngine.getActiveRules();
     const tieBreakSeq = rules["tiebreak.sequence"];
+    const cbeCutoffMap = getCbeCutoffMap(rules);
+    const cbeMaxMarksRaw = Number(rules["cbe.maxMarks"] ?? 100);
+    const cbeMaxMarks = Number.isFinite(cbeMaxMarksRaw) && cbeMaxMarksRaw > 0 ? cbeMaxMarksRaw : 100;
 
     await logService.write("info", "Processing pipeline started (CSV-backed mode)");
 
@@ -100,7 +155,9 @@ export const processingService = {
           "gender",
           "category",
           "is_esm as isEsm",
+          "state_code as stateCodeDb",
           "ncc_cert as nccCert",
+          "marks_cbe as marksCbe",
           "normalized_marks as normalizedMarks",
           "part_a_marks as partAMarks",
           "part_b_marks as partBMarks",
@@ -120,36 +177,24 @@ export const processingService = {
         processed += 1;
         const raw = typeof c.rawData === "string" ? JSON.parse(c.rawData) : (c.rawData ?? {});
 
-        // ── Primary gate: SSC pre-computed eligibility flag ───────────────────
-        const toBeConsidered = String(raw.to_be_considered ?? "").trim();
-        if (toBeConsidered !== "Yes") {
-          rejectedCount += 1;
-          const reason = raw.candidature_status
-            ? `candidature_status=${raw.candidature_status}`
-            : "to_be_considered≠Yes";
-          updates.push({
-            id: c.id,
-            status: "rejected",
-            finalMarks: null,
-            meritRank: null,
-            nccCert: c.nccCert,
-            category: c.category,
-            domicileState: null,
-          });
-          if (hasEvalTable) {
-            evalRows.push({
-              candidate_id: c.id,
-              qualified: false,
-              reasons: JSON.stringify([{ code: "NOT_TO_BE_CONSIDERED", message: reason }]),
-              summary: JSON.stringify({ toBeConsidered }),
-            });
-          }
-          continue;
-        }
+        // NOTE:
+        // to_be_considered / candidature_status gate intentionally removed.
+        // Merit processing now does not reject candidates using those fields.
 
         // ── Extract pre-computed marks ─────────────────────────────────────────
-        const totalMarksNew = Number(raw.total_marks_new);
-        const finalMarks = Number.isFinite(totalMarksNew) && totalMarksNew > 0 ? totalMarksNew : null;
+        const totalFromRaw = Number(rawGet(raw, "total", "total_marks_new", "final_marks"));
+        const score = Number(rawGet(raw, "score", "marks_cbe", "total_marks"));
+        const normalized = Number(rawGet(raw, "nscore", "normalized_score", "normalized_marks"));
+        const nccBonus = Number(rawGet(raw, "ncc_bonus", "ncc_marks_new"));
+        const computedFromScore = Number.isFinite(score) && Number.isFinite(nccBonus) ? score + nccBonus : null;
+        const computedFromNormalized = Number.isFinite(normalized) && Number.isFinite(nccBonus) ? normalized + nccBonus : null;
+        const finalMarks = Number.isFinite(totalFromRaw) && totalFromRaw > 0
+          ? totalFromRaw
+          : Number.isFinite(computedFromScore) && computedFromScore > 0
+            ? computedFromScore
+            : Number.isFinite(computedFromNormalized) && computedFromNormalized > 0
+              ? computedFromNormalized
+              : null;
 
         if (finalMarks == null) {
           rejectedCount += 1;
@@ -174,34 +219,73 @@ export const processingService = {
         }
 
         // ── Derive effective category from cat1 ───────────────────────────────
-        const cat1Category = cat1ToCategory(raw.cat1);
+        const cat1Category = cat1ToCategory(rawGet(raw, "cat1"));
         const effectiveCategory = cat1Category ?? c.category ?? "UR";
+        const effectiveIsEsm = parseEsm(rawGet(raw, "cat2"), c.isEsm);
+
+        // Enforce CBE cutoff rule (category-wise) so low scores fail merit.
+        const normalizedScore = Number.isFinite(Number(c.normalizedMarks))
+          ? Number(c.normalizedMarks)
+          : Number(rawGet(raw, "nscore", "normalized_score", "normalized_marks"));
+        const marksCbe = Number.isFinite(Number(c.marksCbe))
+          ? Number(c.marksCbe)
+          : Number(rawGet(raw, "score", "marks_cbe", "total_marks"));
+        const scorePercent = Number.isFinite(normalizedScore)
+          ? normalizedScore
+          : (Number.isFinite(marksCbe) ? (marksCbe / cbeMaxMarks) * 100 : null);
+        const cutoffCategory = effectiveIsEsm ? "ESM" : effectiveCategory;
+        const cutoffPercent = Number(cbeCutoffMap[cutoffCategory] ?? cbeCutoffMap.UR ?? 0);
+        if (!Number.isFinite(scorePercent) || scorePercent < cutoffPercent) {
+          rejectedCount += 1;
+          updates.push({
+            id: c.id,
+            status: "rejected",
+            finalMarks: null,
+            meritRank: null,
+            nccCert: c.nccCert,
+            category: effectiveCategory,
+            isEsm: effectiveIsEsm,
+            gender: parseGender(c.gender) ?? "O",
+            domicileState: null,
+          });
+          if (hasEvalTable) {
+            evalRows.push({
+              candidate_id: c.id,
+              qualified: false,
+              reasons: JSON.stringify([{ code: "CBE_BELOW_CUTOFF", message: `scorePercent=${scorePercent ?? "NA"} cutoff=${cutoffPercent}` }]),
+              summary: JSON.stringify({ scorePercent, cutoffPercent, cutoffCategory }),
+            });
+          }
+          continue;
+        }
 
         // ── NCC certificate from raw_data (if not already in DB) ─────────────
-        const nccCertFromRaw = raw.ncc_type_app
-          ? String(raw.ncc_type_app).trim().toUpperCase().replace(/\s+/g, "")
+        const nccCertFromRaw = rawGet(raw, "ncc_cert", "ncc_type_app")
+          ? String(rawGet(raw, "ncc_cert", "ncc_type_app")).trim().toUpperCase().replace(/\s+/g, "")
           : null;
         const nccCert = c.nccCert ?? (nccCertFromRaw || null);
 
         // ── State code for allocation from raw_data ───────────────────────────
-        const stateCodeRaw = raw.statecode_considered_app;
+        const stateCodeRaw = rawGet(raw, "state_code", "s_code", "statecode_considered_app");
         const stateCode = stateCodeRaw != null && String(stateCodeRaw).trim() !== ""
           ? String(stateCodeRaw).trim()
-          : null;
+          : (c.stateCodeDb != null && String(c.stateCodeDb).trim() !== "" ? String(c.stateCodeDb).trim() : null);
 
         // ── Part marks: prefer DB values, fall back to raw_data ───────────────
         const partAMarks = c.partAMarks != null
           ? Number(c.partAMarks)
-          : Number(raw.parta_gi ?? raw.part_a_marks ?? 0);
+          : Number(rawGet(raw, "part_a_marks", "part_a", "parta_gi") ?? 0);
         const partBMarks = c.partBMarks != null
           ? Number(c.partBMarks)
-          : Number(raw.partb_ga ?? raw.part_b_marks ?? 0);
+          : Number(rawGet(raw, "part_b_marks", "part_b", "partb_ga") ?? 0);
 
         // ── DOB ───────────────────────────────────────────────────────────────
-        const dob = c.dob ? asDateOnly(new Date(c.dob)) : dobFromAny(raw.dob);
+        const dob = c.dob ? asDateOnly(new Date(c.dob)) : dobFromAny(rawGet(raw, "dob"));
 
         // ── Gender (prefer DB, fall back to raw_data) ─────────────────────────
-        const gender = c.gender ?? raw.gender_app ?? null;
+        const rawGender = parseGender(rawGet(raw, "gender", "gender_app"));
+        const currentGender = parseGender(c.gender);
+        const gender = rawGender ?? currentGender ?? "O";
 
         updates.push({
           id: c.id,
@@ -210,6 +294,8 @@ export const processingService = {
           meritRank: null,
           nccCert,
           category: effectiveCategory,
+          isEsm: effectiveIsEsm,
+          gender,
           domicileState: stateCode,
         });
 
@@ -219,9 +305,9 @@ export const processingService = {
             qualified: true,
             reasons: JSON.stringify([]),
             summary: JSON.stringify({
-              toBeConsidered,
               totalMarksNew: finalMarks,
               effectiveCategory,
+              effectiveIsEsm,
               stateCode,
               nccCert,
             }),
@@ -244,18 +330,23 @@ export const processingService = {
       // Apply batch updates in transaction
       await k.transaction(async (trx) => {
         for (const u of updates) {
+          const updatePayload = {
+            status: u.status,
+            final_marks: u.finalMarks ?? null,
+            merit_rank: null,
+            ncc_cert: u.nccCert ?? null,
+            domicile_state: u.domicileState ?? null,
+            state_code: u.domicileState ?? null,
+            updated_at: trx.fn.now(),
+          };
+          // Never write NULL into NOT NULL columns during reject path updates.
+          if (u.category != null) updatePayload.category = u.category;
+          if (u.isEsm != null) updatePayload.is_esm = u.isEsm;
+          if (u.gender != null) updatePayload.gender = u.gender;
           // eslint-disable-next-line no-await-in-loop
           await trx("candidates")
             .where({ id: u.id })
-            .update({
-              status: u.status,
-              final_marks: u.finalMarks ?? null,
-              merit_rank: null,
-              category: u.category,
-              ncc_cert: u.nccCert ?? null,
-              domicile_state: u.domicileState ?? null,
-              updated_at: trx.fn.now(),
-            });
+            .update(updatePayload);
         }
 
         if (hasEvalTable && evalRows.length) {

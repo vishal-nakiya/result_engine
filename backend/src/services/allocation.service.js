@@ -21,8 +21,8 @@ function normalizeStateText(s) {
 
 function genderNum(g) {
   const s = String(g ?? "").trim().toUpperCase();
-  if (s === "M" || s === "1" || s.startsWith("M")) return 1;
-  if (s === "F" || s === "2" || s.startsWith("F")) return 2;
+  if (s === "M" || s === "2" || s.startsWith("M")) return 1;
+  if (s === "F" || s === "1" || s.startsWith("F")) return 2;
   return null;
 }
 
@@ -35,7 +35,19 @@ function areaBucket(areaRaw) {
 
 function parseBoolLoose(v) {
   const s = String(v ?? "").trim().toLowerCase();
-  return s === "t" || s === "true" || s === "1" || s === "yes";
+  return s === "t" || s === "true" || s === "1" || s === "yes" || s === "y";
+}
+
+function rawGet(raw, ...keys) {
+  if (!raw || typeof raw !== "object") return null;
+  for (const key of keys) {
+    if (raw[key] != null && String(raw[key]).trim() !== "") return raw[key];
+    const upper = String(key).toUpperCase();
+    const lower = String(key).toLowerCase();
+    if (raw[upper] != null && String(raw[upper]).trim() !== "") return raw[upper];
+    if (raw[lower] != null && String(raw[lower]).trim() !== "") return raw[lower];
+  }
+  return null;
 }
 
 /**
@@ -193,10 +205,13 @@ function slotsForCandidatePdfOrder(rows, flags, priorityOrder) {
  */
 function parsePostPreference(prefRaw) {
   const ALL_CODES = new Set(["A", "B", "C", "D", "E", "F", "G", "H"]);
-  const prefs = String(prefRaw ?? "")
-    .split(",")
-    .map((s) => s.trim().toUpperCase())
-    .filter((s) => ALL_CODES.has(s));
+  const src = String(prefRaw ?? "").trim().toUpperCase();
+  const tokenized = src
+    .split(/[,/|;\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const fallbackChars = tokenized.length ? tokenized : src.replace(/[^A-H]/g, "").split("");
+  const prefs = fallbackChars.filter((s) => ALL_CODES.has(s));
   // Append any missing codes at the end in default order A→B→C→D→E→F→G→H
   for (const c of ["A", "B", "C", "D", "E", "F", "G", "H"]) {
     if (!prefs.includes(c)) prefs.push(c);
@@ -218,6 +233,9 @@ async function loadClearedCandidatesOrdered(k) {
       "is_esm as isEsm",
       "domicile_state as domicileState",
       "district",
+      "state_code as stateCode",
+      "district_code as districtCode",
+      "state_name as stateName",
       "raw_data as rawData",
     ])
     // Global merit order: best marks first; merit_rank is the tiebreak
@@ -229,9 +247,9 @@ async function loadClearedCandidatesOrdered(k) {
   return rows.map((c) => {
     const raw = typeof c.rawData === "string" ? JSON.parse(c.rawData) : (c.rawData ?? {});
     // Prefer statecode_considered_app from raw_data for accurate state resolution
-    const stateCodeOverride = raw.statecode_considered_app
-      ? String(raw.statecode_considered_app).trim()
-      : null;
+    const stateCodeOverride = rawGet(raw, "state_code", "s_code", "statecode_considered_app")
+      ? String(rawGet(raw, "state_code", "s_code", "statecode_considered_app")).trim()
+      : (c.stateCode ? String(c.stateCode).trim() : null);
     return {
       ...c,
       raw,
@@ -322,25 +340,26 @@ async function allocateFromVacancyRows(k) {
     if (c.stateCodeOverride) {
       stateCode = c.stateCodeOverride;
     } else {
-      const stateRes = resolveStateCodeDetail(c.domicileState, statesList);
+      const stateText = c.stateName ?? rawGet(c.raw, "state_name", "state") ?? c.domicileState;
+      const stateRes = resolveStateCodeDetail(stateText, statesList);
       stateCode = stateRes.stateCode ? String(stateRes.stateCode) : null;
     }
 
     // Area flags: prefer raw_data (pre-computed by SSC), else fall back to district master
-    const isNaxal = parseBoolLoose(c.raw.naxal_district);
-    const isBorder = parseBoolLoose(c.raw.border_district);
+    const isNaxal = parseBoolLoose(rawGet(c.raw, "naxal", "naxal_district"));
+    const isBorder = parseBoolLoose(rawGet(c.raw, "border", "border_district"));
     const flags = { isNaxal, isBorder };
 
     // Normalized marks for §13.14 UR eligibility check
     const normalizedMarks = c.normalizedMarks != null
       ? Number(c.normalizedMarks)
-      : Number(c.raw.normalized_score ?? 0);
+      : Number(rawGet(c.raw, "normalized_score", "nscore") ?? 0);
 
     // Relaxation check: ARC or physical relaxation → cannot fill UR (unless ESM)
     const usedRelaxation = computeUsedRelaxation(c.raw, c.isEsm);
 
     // Candidate's preferred force order from post_preference field
-    const prefOrder = parsePostPreference(c.raw.post_preference);
+    const prefOrder = parsePostPreference(rawGet(c.raw, "post_preference", "pref"));
 
     // Base filter: gender + category match (used before force-preference ordering)
     const baseFilter = (r) => {
@@ -480,7 +499,7 @@ async function allocateFromVacancyRows(k) {
       force_code: rowPost,
       category_allocated: catIns,
       state_allocated: stateAllocated || stateName || "—",
-      district_allocated: String(c.district ?? c.raw.domicile_dist_app ?? "").trim() || "—",
+        district_allocated: String(c.districtCode ?? c.district ?? rawGet(c.raw, "district_code", "d_code", "domicile_dist_app") ?? "").trim() || "—",
       vacancy_row_key: chosen.row_key,
       state_code: ALL_INDIA_POSTS.has(rowPost) ? stateCode ?? chosen.state_code : chosen.state_code,
       area: chosen.area ?? null,
@@ -532,7 +551,7 @@ async function allocateFromVacancyRows(k) {
         force_code: rowPost,
         category_allocated: "ESM", // §3.2 fallback: non-ESM fills unfilled ESM slot
         state_allocated: stateName || "—",
-        district_allocated: String(cand.district ?? cand.raw.domicile_dist_app ?? "").trim() || "—",
+        district_allocated: String(cand.districtCode ?? cand.district ?? rawGet(cand.raw, "district_code", "d_code", "domicile_dist_app") ?? "").trim() || "—",
         vacancy_row_key: esmSlot.row_key,
         state_code: esmSlot.state_code,
         area: esmSlot.area ?? null,

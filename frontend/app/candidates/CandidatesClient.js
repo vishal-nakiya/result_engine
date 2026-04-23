@@ -92,6 +92,33 @@ function areaTypeFromRaw(raw) {
   return "General";
 }
 
+function pstLabel(raw) {
+  const v = String(raw?.pst_status ?? raw?.PST_STATUS ?? "").trim().toUpperCase();
+  if (!v) return "—";
+  if (v === "T") return "Qualified";
+  if (v === "F") return "Not Qualified";
+  return v;
+}
+
+function petLabel(raw) {
+  const v = String(raw?.pet_status ?? raw?.PET_STATUS ?? "").trim().toUpperCase();
+  if (!v) return "—";
+  if (v === "Q") return "Qualified";
+  if (v === "N") return "Not Qualified";
+  return v;
+}
+
+const DEPRECATED_UPLOAD_COLUMNS = new Set([
+  "father_name",
+  "domicile_state",
+  "district",
+  "height",
+  "chest",
+  "weight",
+  "is_pwd",
+  "status",
+]);
+
 export default function CandidatesClient({ initial }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -213,6 +240,14 @@ export default function CandidatesClient({ initial }) {
   }
 
   const rows = data.rows;
+  const mappingColumns = useMemo(
+    () => (csvPreview?.candidateColumns ?? []).filter((c) => !DEPRECATED_UPLOAD_COLUMNS.has(String(c))),
+    [csvPreview]
+  );
+  const unmappedVisible = useMemo(
+    () => (csvPreview?.unmapped ?? []).filter((c) => !DEPRECATED_UPLOAD_COLUMNS.has(String(c))),
+    [csvPreview]
+  );
 
   function goToPage(p) {
     const next = Math.min(totalPages, Math.max(1, p));
@@ -408,7 +443,8 @@ export default function CandidatesClient({ initial }) {
                   <th>NCC Marks</th>
                   <th>Total Marks</th>
                   <th>DOB</th>
-                  <th>PST/PET</th>
+                  <th>PST</th>
+                  <th>PET</th>
                   <th>DME</th>
                   <th>To Be Considered</th>
                   <th>Actions</th>
@@ -438,20 +474,17 @@ export default function CandidatesClient({ initial }) {
                     </td>
                     <td className="mono">{formatDob(r.dob)}</td>
                     <td>
-                      {String(r.rawData?.final_pet_pst_status ?? r.rawData?.pet_status ?? "").toLowerCase().includes("qualified") ? (
-                        <Badge className="badge-green">Qualified</Badge>
-                      ) : (
-                        <Badge className="badge-gray">—</Badge>
-                      )}
+                      <Badge className={pstLabel(r.rawData) === "Qualified" ? "badge-green" : pstLabel(r.rawData) === "Not Qualified" ? "badge-red" : "badge-gray"}>
+                        {pstLabel(r.rawData)}
+                      </Badge>
                     </td>
                     <td>
-                      {(() => {
-                        const dme = String(r.rawData?.dme_status ?? r.rawData?.dme_final_status ?? "").trim();
-                        if (!dme) return <Badge className="badge-red">Unfit</Badge>;
-                        if (dme.toLowerCase().includes("fit")) return <Badge className="badge-green">Fit</Badge>;
-                        if (dme.toLowerCase().includes("unfit")) return <Badge className="badge-red">Unfit</Badge>;
-                        return <Badge className="badge-gray">{dme}</Badge>;
-                      })()}
+                      <Badge className={petLabel(r.rawData) === "Qualified" ? "badge-green" : petLabel(r.rawData) === "Not Qualified" ? "badge-red" : "badge-gray"}>
+                        {petLabel(r.rawData)}
+                      </Badge>
+                    </td>
+                    <td>
+                      <Badge className="badge-green">Fit</Badge>
                     </td>
                     <td>
                       {String(r.rawData?.to_be_considered ?? "").toLowerCase() === "yes" ? (
@@ -618,7 +651,7 @@ export default function CandidatesClient({ initial }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {(csvPreview?.candidateColumns ?? []).map((dbCol) => {
+                  {mappingColumns.map((dbCol) => {
                     const headers = csvPreview?.headers ?? [];
                     const selected = csvMapping?.[dbCol] ?? "";
                     const sample = csvPreview?.previewRows?.[0]?.[selected] ?? "";
@@ -657,7 +690,7 @@ export default function CandidatesClient({ initial }) {
 
           <div style={{ padding: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 10, flexWrap: "wrap" }}>
             <div style={{ fontSize: 12, color: "var(--ink3)" }}>
-              Unmapped fields: <span className="mono">{(csvPreview?.unmapped ?? []).join(", ") || "—"}</span>
+              Unmapped fields: <span className="mono">{unmappedVisible.join(", ") || "—"}</span>
             </div>
           </div>
         </div>

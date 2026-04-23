@@ -31,6 +31,7 @@ const STAGE_TEMPLATE_HEAD = {
 };
 
 const TYPE_BADGE = {
+  registration_no: "TEXT",
   roll_no: "TEXT",
   name: "TEXT",
   father_name: "TEXT",
@@ -49,8 +50,68 @@ const TYPE_BADGE = {
   normalized_marks: "DECIMAL(12,5)",
   part_a_marks: "DECIMAL",
   part_b_marks: "DECIMAL",
+  part_c_marks: "DECIMAL",
+  part_d_english_marks: "DECIMAL",
+  part_d_hindi_marks: "DECIMAL",
+  ncc_bonus_marks: "DECIMAL",
+  age_years: "DECIMAL",
+  arc_code: "TEXT",
+  post_preference: "TEXT",
+  state_code: "TEXT",
+  district_code: "TEXT",
+  state_name: "TEXT",
+  naxal: "BOOL",
+  border: "BOOL",
+  pst_status: "ENUM",
+  pet_status: "ENUM",
+  dv_result: "ENUM",
+  med_result: "ENUM",
+  debarred: "BOOL",
+  withheld: "BOOL",
   status: "ENUM",
 };
+
+const MASTER_CSV_LABEL = {
+  registration_no: "REG_NUM",
+  roll_no: "ROLL",
+  name: "CNAME",
+  category: "CAT1",
+  is_esm: "CAT2",
+  gender: "GENDER",
+  dob: "DOB",
+  age_years: "AGE",
+  ncc_cert: "NCC_CERT",
+  arc_code: "AR_CODE",
+  post_preference: "PREF",
+  state_code: "S_CODE",
+  district_code: "D_CODE",
+  state_name: "STATE",
+  naxal: "NAXAL",
+  border: "BORDER",
+  pst_status: "PST_STATUS",
+  pet_status: "PET_STATUS",
+  dv_result: "DV_RESULT",
+  med_result: "MED_RESULT",
+  part_a_marks: "PART_A",
+  part_b_marks: "PART_B",
+  part_c_marks: "PART_C",
+  part_d_english_marks: "PART_DE",
+  part_d_hindi_marks: "PART_DH",
+  marks_cbe: "SCORE",
+  normalized_marks: "NSCORE",
+  ncc_bonus_marks: "NCC_BONUS",
+  final_marks: "TOTAL",
+  debarred: "DEBARRED",
+  withheld: "WITHHELD",
+  status: "STATUS",
+};
+
+const MASTER_LABEL_SEQUENCE = [
+  "REG_NUM", "ROLL", "CNAME", "CAT1", "CAT2", "GENDER", "DOB", "AGE", "NCC", "NCC_CERT",
+  "AR_CODE", "PREF", "S_CODE", "D_CODE", "STATE", "NAXAL", "BORDER", "PST_STATUS", "PET_STATUS",
+  "DV_RESULT", "MED_RESULT", "PART_A", "PART_B", "PART_C", "PART_DE", "PART_DH", "SCORE",
+  "NSCORE", "NCC_BONUS", "TOTAL", "DEBARRED", "WITHHELD",
+];
 
 async function fileToCsvFile(file) {
   const lower = file.name.toLowerCase();
@@ -416,6 +477,9 @@ export default function UploadClient() {
             <div className="upload-hint">
               Excel uses the <strong>first sheet only</strong>. Data is converted to CSV for preview. Extra columns are kept in <span className="mono">raw_data</span>.
             </div>
+            <div className="upload-hint" style={{ marginTop: 6 }}>
+              Final master fields like <span className="mono">REG_NUM/CAT1/CAT2/GENDER/PREF/S_CODE/D_CODE/PART_C/PART_DE/PART_DH/TOTAL</span> are supported via column mapping.
+            </div>
             <div style={{ marginTop: 12, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               <button className="btn btn-ghost btn-sm" type="button" onClick={(e) => { e.stopPropagation(); pickFile(); }}>
                 Choose file
@@ -437,6 +501,9 @@ export default function UploadClient() {
               <div className="card-header">
                 <div className="card-title">Field schema validation</div>
                 <span className={`badge ${schemaOk ? "badge-green" : "badge-amber"}`}>{schemaOk ? "Required maps OK" : "Map required fields"}</span>
+              </div>
+              <div style={{ padding: "8px 16px", borderBottom: "1px solid var(--border)", fontSize: 11, color: "var(--ink3)" }}>
+                Master CSV labels: <span className="mono">{MASTER_LABEL_SEQUENCE.join(", ")}</span>
               </div>
               <div style={{ padding: "8px 0" }}>
                 {(preview.candidateColumns ?? []).map((dbCol) => {
@@ -463,6 +530,11 @@ export default function UploadClient() {
                         <span className="badge badge-purple" style={{ marginLeft: 8, fontSize: 10 }}>
                           {badge}
                         </span>
+                        {MASTER_CSV_LABEL[dbCol] ? (
+                          <span className="badge badge-gray" style={{ marginLeft: 8, fontSize: 10 }}>
+                            CSV: {MASTER_CSV_LABEL[dbCol]}
+                          </span>
+                        ) : null}
                         <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 4 }}>{ok ? "Mapped" : "Not mapped"}</div>
                       </div>
                       <div style={{ textAlign: "right", fontSize: 12, color: ok ? "var(--green)" : "var(--ink4)" }}>{ok ? "✓" : "—"}</div>

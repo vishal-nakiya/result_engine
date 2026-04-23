@@ -7,25 +7,36 @@ import { logService } from "./log.service.js";
 import { uploadSessionService } from "./upload-session.service.js";
 
 const CANDIDATE_COLUMNS = [
+  "registration_no",
   "roll_no",
   "name",
-  "father_name",
   "dob",
   "gender",
   "category",
   "is_esm",
-  "domicile_state",
-  "district",
-  "height",
-  "chest",
-  "weight",
-  "is_pwd",
   "ncc_cert",
   "marks_cbe",
   "normalized_marks",
   "part_a_marks",
   "part_b_marks",
-  "status",
+  "part_c_marks",
+  "part_d_english_marks",
+  "part_d_hindi_marks",
+  "ncc_bonus_marks",
+  "age_years",
+  "arc_code",
+  "post_preference",
+  "state_code",
+  "district_code",
+  "state_name",
+  "naxal",
+  "border",
+  "pst_status",
+  "pet_status",
+  "dv_result",
+  "med_result",
+  "debarred",
+  "withheld",
 ];
 
 function normalizeHeader(h) {
@@ -39,20 +50,35 @@ function normalizeHeader(h) {
 
 const HEADER_ALIASES = {
   roll_no: ["rollno", "rollnumber", "roll_number", "roll_no"],
+  registration_no: ["reg_num", "registrationno", "registration_no"],
   name: ["candidate_name", "newname"],
-  father_name: ["fathersname", "fathers_name"],
   dob: ["date_of_birth"],
   gender: ["gender_app"],
-  category: ["category_app"],
-  is_esm: ["isesm", "whether_ex_serviceman"],
-  domicile_state: ["domicile_state_app", "domicile_state_ut"],
-  district: ["domicile_dist_app", "domicile_district"],
-  ncc_cert: ["ncc_type_app", "type_of_ncc_certificate"],
-  marks_cbe: ["score", "total_marks", "total_marks_new"],
-  normalized_marks: ["normalized_score"],
-  part_a_marks: ["parta_gi"],
-  part_b_marks: ["partb_ga"],
-  status: [],
+  category: ["category_app", "cat1"],
+  is_esm: ["isesm", "whether_ex_serviceman", "cat2"],
+  ncc_cert: ["ncc_type_app", "type_of_ncc_certificate", "ncc_cert"],
+  marks_cbe: ["score", "total_marks", "total_marks_new", "part_a", "part_b", "score"],
+  normalized_marks: ["normalized_score", "nscore"],
+  part_a_marks: ["parta_gi", "part_a"],
+  part_b_marks: ["partb_ga", "part_b"],
+  part_c_marks: ["part_c"],
+  part_d_english_marks: ["part_de"],
+  part_d_hindi_marks: ["part_dh"],
+  ncc_bonus_marks: ["ncc_bonus"],
+  age_years: ["age"],
+  arc_code: ["ar_code"],
+  post_preference: ["pref", "post_preference"],
+  state_code: ["s_code", "statecode_considered_app"],
+  district_code: ["d_code"],
+  state_name: ["state"],
+  naxal: ["naxal", "naxal_district"],
+  border: ["border", "border_district"],
+  pst_status: ["pst_status"],
+  pet_status: ["pet_status"],
+  dv_result: ["dv_result"],
+  med_result: ["med_result"],
+  debarred: ["debarred"],
+  withheld: ["withheld"],
 };
 
 function inferAutoMapping(headers) {
@@ -85,6 +111,11 @@ function inferAutoMapping(headers) {
 
 function buildPreviewRows(records, limit = 25) {
   return records.slice(0, limit);
+}
+
+function stripDeprecatedCols(cols = []) {
+  const deprecated = new Set(["father_name", "domicile_state", "district", "height", "chest", "weight", "is_pwd", "status"]);
+  return cols.filter((c) => !deprecated.has(String(c)));
 }
 
 const commitSchema = z
@@ -138,7 +169,7 @@ async function parsePreviewFromFile(filePath, limit = 25) {
 
 function parseBool(v) {
   const s = String(v ?? "").trim().toLowerCase();
-  if (s === "true" || s === "t" || s === "1" || s === "yes" || s === "y") return true;
+  if (s === "true" || s === "t" || s === "1" || s === "yes" || s === "y" || s === "positive" || s === "p") return true;
   if (s === "false" || s === "f" || s === "0" || s === "no" || s === "n" || s === "") return false;
   return null;
 }
@@ -181,6 +212,36 @@ function normalizeStatus(v) {
   return null;
 }
 
+function normalizeGender(v) {
+  const s = String(v ?? "").trim().toUpperCase();
+  if (!s) return null;
+  if (s === "2" || s === "M" || s === "MALE") return "M";
+  if (s === "1" || s === "F" || s === "FEMALE") return "F";
+  if (s === "3" || s === "O" || s === "OTHER") return "O";
+  return null;
+}
+
+function normalizeCategory(v) {
+  const s = String(v ?? "").trim().toUpperCase();
+  if (!s) return null;
+  if (["UR", "OBC", "SC", "ST", "EWS"].includes(s)) return s;
+  if (s === "1") return "SC";
+  if (s === "2") return "ST";
+  if (s === "6") return "OBC";
+  // Master sheet defines CAT1=9 as UR.
+  if (s === "9" || s === "0") return "UR";
+  return null;
+}
+
+function normalizeEsm(v) {
+  const s = String(v ?? "").trim().toUpperCase();
+  if (!s) return false;
+  if (s === "3") return true;
+  if (["Y", "YES", "TRUE", "T", "1"].includes(s)) return true;
+  if (["N", "NO", "FALSE", "F", "0"].includes(s)) return false;
+  return false;
+}
+
 export const csvService = {
   async previewCsvFromUpload({ uploadId }) {
     const session = uploadSessionService.get(uploadId);
@@ -191,13 +252,17 @@ export const csvService = {
     }
 
     const { headers, previewRows, totalRows } = await parsePreviewFromFile(session.filePath);
-    const autoMapping = inferAutoMapping(headers);
-    const unmapped = CANDIDATE_COLUMNS.filter((c) => !autoMapping[c]);
+    const candidateColumns = stripDeprecatedCols(CANDIDATE_COLUMNS);
+    const autoMappingRaw = inferAutoMapping(headers);
+    const autoMapping = Object.fromEntries(
+      Object.entries(autoMappingRaw).filter(([k]) => candidateColumns.includes(k))
+    );
+    const unmapped = candidateColumns.filter((c) => !autoMapping[c]);
     await logService.write("info", "CSV preview generated", { rows: totalRows });
     return {
       uploadId,
       headers,
-      candidateColumns: CANDIDATE_COLUMNS,
+      candidateColumns,
       autoMapping,
       unmapped,
       previewRows,
@@ -288,10 +353,11 @@ export const csvService = {
       const get = (col) => row[mapping[col]];
 
       const rollNo = String(get("roll_no") ?? "").trim();
+      const registrationNo = mapping.registration_no ? String(get("registration_no") ?? "").trim() : "";
       const name = String(get("name") ?? "").trim();
       const dob = parseDateDDMMYYYY(get("dob"));
-      const gender = String(get("gender") ?? "").trim();
-      const category = String(get("category") ?? "").trim().toUpperCase();
+      const gender = normalizeGender(get("gender"));
+      const category = normalizeCategory(get("category"));
 
       if (!rollNo || !name || !dob || !gender || !category) {
         addError(rowNo, "Missing required fields");
@@ -312,12 +378,13 @@ export const csvService = {
       const data = {
         id: newId(),
         roll_no: rollNo,
+        registration_no: registrationNo || null,
         name,
         father_name: mapping.father_name ? String(get("father_name") ?? "").trim() || null : null,
         dob,
         gender,
         category,
-        is_esm: mapping.is_esm ? Boolean(parseBool(get("is_esm"))) : false,
+        is_esm: mapping.is_esm ? normalizeEsm(get("is_esm")) : false,
         domicile_state: mapping.domicile_state ? String(get("domicile_state") ?? "").trim() || null : null,
         district: mapping.district ? String(get("district") ?? "").trim() || null : null,
         height: mapping.height ? Number(get("height") ?? NaN) : null,
@@ -329,13 +396,47 @@ export const csvService = {
         normalized_marks: mapping.normalized_marks ? Number(get("normalized_marks") ?? NaN) : null,
         part_a_marks: mapping.part_a_marks ? Number(get("part_a_marks") ?? NaN) : null,
         part_b_marks: mapping.part_b_marks ? Number(get("part_b_marks") ?? NaN) : null,
+        part_c_marks: mapping.part_c_marks ? Number(get("part_c_marks") ?? NaN) : null,
+        part_d_english_marks: mapping.part_d_english_marks ? Number(get("part_d_english_marks") ?? NaN) : null,
+        part_d_hindi_marks: mapping.part_d_hindi_marks ? Number(get("part_d_hindi_marks") ?? NaN) : null,
+        ncc_bonus_marks: mapping.ncc_bonus_marks ? Number(get("ncc_bonus_marks") ?? NaN) : null,
+        age_years: mapping.age_years ? Number(get("age_years") ?? NaN) : null,
+        arc_code: mapping.arc_code ? String(get("arc_code") ?? "").trim() || null : null,
+        post_preference: mapping.post_preference ? String(get("post_preference") ?? "").trim() || null : null,
+        state_code: mapping.state_code ? String(get("state_code") ?? "").trim() || null : null,
+        district_code: mapping.district_code ? String(get("district_code") ?? "").trim() || null : null,
+        state_name: mapping.state_name ? String(get("state_name") ?? "").trim() || null : null,
+        naxal: mapping.naxal ? parseBool(get("naxal")) : null,
+        border: mapping.border ? parseBool(get("border")) : null,
+        pst_status: mapping.pst_status ? String(get("pst_status") ?? "").trim().toUpperCase() || null : null,
+        pet_status: mapping.pet_status ? String(get("pet_status") ?? "").trim().toUpperCase() || null : null,
+        dv_result: mapping.dv_result ? String(get("dv_result") ?? "").trim().toUpperCase() || null : null,
+        // DME/medical defaults to Fit/Qualified when missing.
+        med_result: mapping.med_result
+          ? (String(get("med_result") ?? "").trim().toUpperCase() || "Q")
+          : "Q",
+        debarred: mapping.debarred ? parseBool(get("debarred")) : null,
+        withheld: mapping.withheld ? parseBool(get("withheld")) : null,
         status: normalizeStatus(mapping.status ? get("status") : null) ?? "withheld",
         raw_data: JSON.stringify(stage ? { ...row, _upload_meta: { stage } } : row),
         created_at: now,
         updated_at: now,
       };
 
-      for (const n of ["height", "chest", "weight", "marks_cbe", "normalized_marks", "part_a_marks", "part_b_marks"]) {
+      for (const n of [
+        "height",
+        "chest",
+        "weight",
+        "marks_cbe",
+        "normalized_marks",
+        "part_a_marks",
+        "part_b_marks",
+        "part_c_marks",
+        "part_d_english_marks",
+        "part_d_hindi_marks",
+        "ncc_bonus_marks",
+        "age_years",
+      ]) {
         if (data[n] == null) continue;
         if (!Number.isFinite(data[n])) {
           addError(rowNo, `Invalid number for ${n}`);
