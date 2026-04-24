@@ -869,7 +869,7 @@ function getCbeCutoffMap(rules) {
       ST: Number.isFinite(scst) ? scst : 0,
     };
   }
-  return rules["cbe.cutoffPercent"] ?? { UR: 30, OBC: 25, EWS: 25, SC: 20, ST: 20, ESM: 20 };
+  return rules["cbe.cutoffPercent"] ?? { UR: 35, OBC: 33, EWS: 35, SC: 33, ST: 33, ESM: 35 };
 }
 
 function getAgeConfig(rules) {

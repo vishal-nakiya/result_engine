@@ -742,8 +742,9 @@ import { rulesEngine } from "./rules.engine.js";
 // Only H=SSF fills on All-India basis (PDF notice). G=NIA has 0 vacancies.
 const ALL_INDIA_POSTS = new Set(["H"]);
 
-// UR normalized-marks cutoff (35 out of 100) for §13.14 check
 const UR_NORMALIZED_CUTOFF = 35;
+const UR_DOB_FROM = "02/08/1998";
+const UR_DOB_TO = "01/08/2003";
 
 const MERIT_FALLBACK_BASE = 5_000_000;
 
@@ -804,6 +805,63 @@ function computeUsedRelaxation(raw, isEsm) {
   return usedARC || heightRelax === "yes" || chestRelax === "yes" || heightChestRelax === "yes";
 }
 
+function parseCandidateDob(raw) {
+  const dobRaw = rawGet(raw, "dob", "date_of_birth", "birth_date", "birthdate");
+  return parseDateFlexible(dobRaw);
+}
+
+function parseDateFlexible(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/); // DD/MM/YYYY or DD-MM-YYYY
+  if (m) {
+    const dd = Number(m[1]);
+    const mm = Number(m[2]);
+    const yyyy = Number(m[3]);
+    if (yyyy >= 1900 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+      return new Date(Date.UTC(yyyy, mm - 1, dd));
+    }
+  }
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); // YYYY-MM-DD
+  if (m) {
+    const yyyy = Number(m[1]);
+    const mm = Number(m[2]);
+    const dd = Number(m[3]);
+    if (yyyy >= 1900 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+      return new Date(Date.UTC(yyyy, mm - 1, dd));
+    }
+  }
+  return null;
+}
+
+function formatDateYyyyMmDd(dt) {
+  if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return null;
+  const yyyy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function dateFromYearStart(year) {
+  const y = Number(year);
+  if (!Number.isFinite(y)) return null;
+  return new Date(Date.UTC(y, 0, 1));
+}
+
+function dateFromYearEnd(year) {
+  const y = Number(year);
+  if (!Number.isFinite(y)) return null;
+  return new Date(Date.UTC(y, 11, 31));
+}
+
+function dobAllowsUr(birthDate, isEsm, dobFromInclusive, dobToInclusive) {
+  if (isEsm) return true;
+  if (!(birthDate instanceof Date) || Number.isNaN(birthDate.getTime())) return false;
+  if (dobFromInclusive instanceof Date && birthDate < dobFromInclusive) return false;
+  if (dobToInclusive instanceof Date && birthDate > dobToInclusive) return false;
+  return true;
+}
+
 function normalizeAllocationPriorityOrder(v) {
   const allowed = new Set(["Naxal", "Border", "General"]);
   const base = Array.isArray(v) ? v.map((x) => String(x ?? "").trim()) : [];
@@ -837,18 +895,27 @@ function remainingSlots(row) {
  * ESM candidates may always fill UR slots (ARC-exempt).
  * Non-ESM candidates who used ARC or physical relaxation CANNOT fill UR slots.
  */
-function vacancyCategoryMatches(rowCategory, candidateCategory, isEsm, normalizedMarks, usedRelaxation) {
+function vacancyCategoryMatches(
+  rowCategory,
+  candidateCategory,
+  isEsm,
+  normalizedMarks,
+  usedRelaxation,
+  birthYearEligibleForUr,
+  urNormalizedCutoff
+) {
   const rc = String(rowCategory ?? "").trim().toUpperCase();
   const cc = String(candidateCategory ?? "").trim().toUpperCase();
 
   if (rc === "UR") {
     if (isEsm) return true; // ESM candidates can fill UR slots (ARC-exempt)
     if (usedRelaxation) return false; // ARC or physical relaxation used → cannot fill UR
+    if (!birthYearEligibleForUr) return false; // DOB outside allowed window -> category-only
     if (cc === "UR" || cc === "EWS") return true; // EWS has no caste relaxation → can fill UR
     // §13.14: OBC/SC/ST qualify at UR level if their normalized score ≥ UR cutoff
     const qualifiesAtUr =
       Number.isFinite(Number(normalizedMarks)) &&
-      Number(normalizedMarks) >= UR_NORMALIZED_CUTOFF;
+      Number(normalizedMarks) >= Number(urNormalizedCutoff);
     return qualifiesAtUr;
   }
 
@@ -862,6 +929,33 @@ function vacancyCategoryMatches(rowCategory, candidateCategory, isEsm, normalize
 
 function categoryAllocatedForInsert(rowCategory) {
   return String(rowCategory ?? "").trim().toUpperCase();
+}
+
+function prefersUrFirst(candidateCategory, normalizedMarks, isEsm, usedRelaxation, birthYearEligibleForUr, urNormalizedCutoff) {
+  if (isEsm) return true;
+  if (usedRelaxation || !birthYearEligibleForUr) return false;
+  const cc = String(candidateCategory ?? "").trim().toUpperCase();
+  if (cc === "UR" || cc === "EWS") return true;
+  return Number.isFinite(Number(normalizedMarks)) && Number(normalizedMarks) >= Number(urNormalizedCutoff);
+}
+
+function orderByCategoryPriority(rows, candidateCategory, urFirst) {
+  const cc = String(candidateCategory ?? "").trim().toUpperCase();
+  const wanted = [];
+  if (urFirst) wanted.push("UR");
+  if (cc && cc !== "UR") wanted.push(cc);
+  if (!wanted.includes("UR")) wanted.push("UR");
+  wanted.push("ESM");
+
+  const rank = new Map(wanted.map((cat, idx) => [cat, idx]));
+  return [...rows].sort((a, b) => {
+    const aCat = String(a?.category ?? "").trim().toUpperCase();
+    const bCat = String(b?.category ?? "").trim().toUpperCase();
+    const aRank = rank.has(aCat) ? rank.get(aCat) : 99;
+    const bRank = rank.has(bCat) ? rank.get(bCat) : 99;
+    if (aRank !== bRank) return aRank - bRank;
+    return 0;
+  });
 }
 
 /** Resolve domicile text → state_code via preloaded states list. */
@@ -1009,6 +1103,9 @@ async function allocateFromVacancyRows(k) {
 
   const activeRules = await rulesEngine.getActiveRules();
   const allocationPriorityOrder = activeRules["allocation.priorityOrder"];
+  const urNormalizedCutoff = UR_NORMALIZED_CUTOFF;
+  const urDobFrom = parseDateFlexible(UR_DOB_FROM) ?? dateFromYearStart(1998);
+  const urDobTo = parseDateFlexible(UR_DOB_TO) ?? dateFromYearEnd(2003);
 
   // Load vacancy rows with canonical state names from states table
   const vr = await k("vacancy_rows as v")
@@ -1092,8 +1189,19 @@ async function allocateFromVacancyRows(k) {
       ? Number(c.normalizedMarks)
       : Number(rawGet(c.raw, "normalized_score", "nscore") ?? 0);
 
+    const birthDate = parseCandidateDob(c.raw);
+    const birthDateEligibleForUr = dobAllowsUr(birthDate, c.isEsm, urDobFrom, urDobTo);
+
     // Relaxation check: ARC or physical relaxation → cannot fill UR (unless ESM)
     const usedRelaxation = computeUsedRelaxation(c.raw, c.isEsm);
+    const shouldTryUrFirst = prefersUrFirst(
+      c.category,
+      normalizedMarks,
+      c.isEsm,
+      usedRelaxation,
+      birthDateEligibleForUr,
+      urNormalizedCutoff
+    );
 
     // Candidate's preferred force order from post_preference field
     const prefOrder = parsePostPreference(rawGet(c.raw, "post_preference", "pref"));
@@ -1101,7 +1209,7 @@ async function allocateFromVacancyRows(k) {
     // Base filter: gender + category match (used before force-preference ordering)
     const baseFilter = (r) => {
       if (genderN != null && Number(r.gender) !== genderN) return false;
-      if (!vacancyCategoryMatches(r.category, c.category, c.isEsm, normalizedMarks, usedRelaxation)) return false;
+      if (!vacancyCategoryMatches(r.category, c.category, c.isEsm, normalizedMarks, usedRelaxation, birthDateEligibleForUr, urNormalizedCutoff)) return false;
       return true;
     };
 
@@ -1158,6 +1266,9 @@ async function allocateFromVacancyRows(k) {
         ordered = slotsForCandidatePdfOrder(candidateSlots, flags, allocationPriorityOrder);
       }
 
+      // Enforce UR-first for eligible candidates (score >= cutoff and no relaxation).
+      ordered = orderByCategoryPriority(ordered, c.category, shouldTryUrFirst);
+
       if (tryPickFromList(ordered)) {
         pickSource = `pref_${forceCode}_${ALL_INDIA_POSTS.has(forceCode) ? "allindia" : "state"}`;
         break;
@@ -1188,7 +1299,7 @@ async function allocateFromVacancyRows(k) {
     let allocationReason;
     if (catIns === "UR") {
       if (c.isEsm) allocationReason = `ESM candidate allocated to UR vacancy`;
-      else allocationReason = `${c.category} candidate qualified for UR vacancy (§13.14 normalizedMarks≥${UR_NORMALIZED_CUTOFF})`;
+      else allocationReason = `${c.category} candidate qualified for UR vacancy (§13.14 normalizedMarks≥${urNormalizedCutoff})`;
     } else if (catIns === "ESM") {
       allocationReason = `${esmNote} candidate allocated to ESM quota slot`;
     } else {
@@ -1208,6 +1319,15 @@ async function allocateFromVacancyRows(k) {
         genderVacancyNumeric: genderN,
         isEsm: Boolean(c.isEsm),
         usedRelaxation,
+        birthDate: formatDateYyyyMmDd(birthDate),
+        birthYear: birthDate instanceof Date ? birthDate.getUTCFullYear() : null,
+        birthYearEligibleForUr: birthDateEligibleForUr,
+        birthDateEligibleForUr,
+        urDobFrom: formatDateYyyyMmDd(urDobFrom),
+        urDobTo: formatDateYyyyMmDd(urDobTo),
+        urDobYearMin: urDobFrom instanceof Date ? urDobFrom.getUTCFullYear() : null,
+        urDobYearMax: urDobTo instanceof Date ? urDobTo.getUTCFullYear() : null,
+        urNormalizedCutoff,
         finalMarks: c.finalMarks != null ? Number(c.finalMarks) : null,
         normalizedMarks,
         meritRank: c.meritRankForAlloc,

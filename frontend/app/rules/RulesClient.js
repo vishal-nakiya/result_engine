@@ -862,6 +862,7 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
                 {RULE_DEFS.allocation.items.map((def) => {
                   const r = ruleByKey.get(def.ruleKey);
                   const kind = def.kind;
+                  const isEditingValue = editing?.ruleKey === def.ruleKey && editing?.field === "value";
                   return (
                     <div className="rule-item" data-id={def.id} data-group={def.group} key={def.id}>
                       <div className="rule-info">
@@ -871,8 +872,32 @@ const RulesClient = forwardRef(function RulesClient(_props, ref) {
                       <div className="rule-value editable-val">
                         {kind === "allocation_priority_order" ? (
                           <AllocationPriorityOrderEditor value={r?.value} onCommit={(v) => upsertLocal(def, { value: v })} />
+                        ) : kind === "date_ddmmyyyy" ? (
+                          <MatriculationMaskedDdMmYyyy value={r?.value} onCommit={(v) => upsertLocal(def, { value: v })} />
+                        ) : isEditingValue ? (
+                          <input
+                            autoFocus
+                            defaultValue={String(r?.value ?? "")}
+                            onBlur={(e) => {
+                              upsertLocal(def, { value: def.parse ? def.parse(e.target.value) : e.target.value });
+                              setEditing(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") e.currentTarget.blur();
+                              if (e.key === "Escape") setEditing(null);
+                            }}
+                            style={{
+                              width: 120,
+                              border: "1px solid var(--border2)",
+                              borderRadius: "var(--radius)",
+                              padding: "2px 6px",
+                              fontFamily: "'DM Mono',monospace",
+                              fontSize: 12,
+                              outline: "none",
+                            }}
+                          />
                         ) : (
-                          def.fmt(r?.value)
+                          <span onDoubleClick={() => setEditing({ ruleKey: def.ruleKey, field: "value" })}>{def.fmt(r?.value)}</span>
                         )}
                       </div>
                       <label className="toggle">

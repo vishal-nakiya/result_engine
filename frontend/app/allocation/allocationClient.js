@@ -16,6 +16,7 @@ export default function AllocationClient() {
   const [busy, setBusy] = useState(false);
   const [runBusy, setRunBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
+  const [ruleExportBusy, setRuleExportBusy] = useState(false);
   const [reportExportBusy, setReportExportBusy] = useState(false);
   const [error, setError] = useState("");
   const [runMsg, setRunMsg] = useState("");
@@ -73,6 +74,11 @@ export default function AllocationClient() {
   function vacancyReportFilename() {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     return `vacancy-summary-report-${stamp}.csv`;
+  }
+
+  function ruleBenefitFilename() {
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    return `allocation-rule-benefit-proof-${stamp}.xlsx`;
   }
 
   function csvCell(v) {
@@ -270,6 +276,135 @@ export default function AllocationClient() {
     }
   }
 
+  function toUpper(v) {
+    return String(v ?? "").trim().toUpperCase();
+  }
+
+  function parseIsoDate(s) {
+    const t = String(s ?? "").trim();
+    const m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    return new Date(Date.UTC(y, mo - 1, d));
+  }
+
+  function isDobInRangeInclusive(birthDateIso, fromDateIso, toDateIso) {
+    const b = parseIsoDate(birthDateIso);
+    const f = parseIsoDate(fromDateIso);
+    const t = parseIsoDate(toDateIso);
+    if (!b || !f || !t) return null;
+    return b >= f && b <= t;
+  }
+
+  function extractRuleBenefitRows(allRows) {
+    const out = [];
+    for (const r of allRows) {
+      const meta = r?.allocationMeta && typeof r.allocationMeta === "object" ? r.allocationMeta : {};
+      const cMeta = meta?.candidate && typeof meta.candidate === "object" ? meta.candidate : {};
+      const allocatedCat = toUpper(r?.categoryAllocated);
+      const originalCat = toUpper(cMeta?.category ?? r?.category);
+      const isEsm = Boolean(cMeta?.isEsm ?? r?.isEsm);
+      const normalizedScore = Number(cMeta?.normalizedMarks);
+      const urCutoff = Number.isFinite(Number(cMeta?.urNormalizedCutoff)) ? Number(cMeta?.urNormalizedCutoff) : 35;
+      const dobYear = Number(cMeta?.birthYear);
+      const birthDate = String(cMeta?.birthDate ?? "");
+      const urDobFromDate = String(cMeta?.urDobFrom ?? "");
+      const urDobToDate = String(cMeta?.urDobTo ?? "");
+      const dobYearMin = Number.isFinite(Number(cMeta?.urDobYearMin)) ? Number(cMeta?.urDobYearMin) : 1998;
+      const dobYearMax = Number.isFinite(Number(cMeta?.urDobYearMax)) ? Number(cMeta?.urDobYearMax) : 2003;
+      const dobEligibleByDate = isDobInRangeInclusive(birthDate, urDobFromDate, urDobToDate);
+      const dobEligible = cMeta?.birthDateEligibleForUr != null
+        ? Boolean(cMeta?.birthDateEligibleForUr)
+        : dobEligibleByDate != null
+          ? Boolean(dobEligibleByDate)
+        : cMeta?.birthYearEligibleForUr != null
+          ? Boolean(cMeta?.birthYearEligibleForUr)
+          : (Number.isFinite(dobYear) ? (dobYear >= dobYearMin && dobYear <= dobYearMax) : false);
+      const usedRelaxation = Boolean(cMeta?.usedRelaxation);
+      const reason = String(meta?.allocation_reason ?? "");
+
+      let benefitType = "";
+      if (allocatedCat === "UR" && isEsm) {
+        benefitType = "UR by ESM bypass";
+      } else if (
+        allocatedCat === "UR" &&
+        !isEsm &&
+        ["OBC", "SC", "ST"].includes(originalCat) &&
+        ((Number.isFinite(normalizedScore) && normalizedScore >= urCutoff) || /qualified for UR vacancy/i.test(reason)) &&
+        dobEligible &&
+        !usedRelaxation
+      ) {
+        benefitType = "UR by normalized-score rule";
+      }
+      const benefitYes = Boolean(benefitType);
+      let notBenefitReason = "";
+      if (!benefitYes) {
+        if (allocatedCat !== "UR") notBenefitReason = "Allocated in own/reserved category (not UR)";
+        else if (usedRelaxation) notBenefitReason = "Used age/physical relaxation";
+        else if (!dobEligible) notBenefitReason = "DOB outside allowed range";
+        else if (!isEsm && ["OBC", "SC", "ST"].includes(originalCat) && !(Number.isFinite(normalizedScore) && normalizedScore >= urCutoff)) {
+          notBenefitReason = "Normalized score below UR cutoff";
+        } else {
+          notBenefitReason = "Did not match benefit criteria";
+        }
+      }
+
+      out.push({
+        meritRank: r?.meritRank ?? "",
+        rollNo: r?.rollNo ?? "",
+        name: r?.name ?? "",
+        originalCategory: originalCat,
+        allocatedCategory: allocatedCat,
+        benefit: benefitYes ? "YES" : "NO",
+        benefitType: benefitType || "Not benefited",
+        forceCode: r?.forceCode ?? "",
+        stateAllocated: r?.stateAllocated ?? "",
+        normalizedScore: Number.isFinite(normalizedScore) ? normalizedScore : "",
+        urCutoff: Number.isFinite(urCutoff) ? urCutoff : 35,
+        dob: birthDate || "NA",
+        birthDate: birthDate || "NA",
+        dobRange: `${urDobFromDate || "02/08/1998"} to ${urDobToDate || "01/08/2003"}`,
+        dobInRange: dobEligible ? "YES" : "NO",
+        usedAgeRelaxation: usedRelaxation ? "YES" : "NO",
+        esmBypass: isEsm ? "YES" : "NO",
+        shortProof: `${benefitYes ? benefitType : notBenefitReason}; ${originalCat}->${allocatedCat}; score ${Number.isFinite(normalizedScore) ? normalizedScore : "NA"}/${Number.isFinite(urCutoff) ? urCutoff : 35}; dobInRange=${dobEligible ? "YES" : "NO"}; relax=${usedRelaxation ? "YES" : "NO"}`,
+        notBenefitReason,
+        allocationReason: reason,
+      });
+    }
+    return out;
+  }
+
+  async function exportRuleBenefitProofExcel() {
+    setRuleExportBusy(true);
+    setError("");
+    try {
+      const allRows = await fetchAllRows();
+      const reportRows = extractRuleBenefitRows(allRows);
+      const benefitedRows = reportRows.filter((r) => r.benefit === "YES");
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+      const summary = [
+        { metric: "Total allocated candidates checked", value: reportRows.length },
+        { metric: "Total rule-benefit candidates", value: benefitedRows.length },
+        { metric: "UR by normalized-score rule", value: benefitedRows.filter((r) => r.benefitType === "UR by normalized-score rule").length },
+        { metric: "UR by ESM bypass", value: benefitedRows.filter((r) => r.benefitType === "UR by ESM bypass").length },
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), "Summary");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(benefitedRows), "BenefitOnly");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(reportRows), "AllChecked");
+      XLSX.writeFile(wb, ruleBenefitFilename());
+    } catch (e) {
+      setError(String(e?.message ?? e));
+    } finally {
+      setRuleExportBusy(false);
+    }
+  }
+
   async function runAllocationOnly() {
     setRunBusy(true);
     setError("");
@@ -343,6 +478,14 @@ export default function AllocationClient() {
             </button>
             <button className="btn btn-dark btn-sm" type="button" onClick={exportAllExcel} disabled={busy || exportBusy}>
               {exportBusy ? "Exporting..." : "Export Excel (Male/Female)"}
+            </button>
+            <button
+              className="btn btn-dark btn-sm"
+              type="button"
+              onClick={exportRuleBenefitProofExcel}
+              disabled={busy || ruleExportBusy}
+            >
+              {ruleExportBusy ? "Exporting..." : "Export Rule-Benefit Proof"}
             </button>
             <button className="btn btn-dark btn-sm" type="button" onClick={exportVacancySummaryCsv} disabled={busy || reportExportBusy}>
               {reportExportBusy ? "Exporting..." : "Export Vacancy Report (CSV)"}
