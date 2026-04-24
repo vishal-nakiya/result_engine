@@ -207,6 +207,12 @@
   .btn-primary:hover { background: var(--accent2); }
   .btn-danger { background: var(--red); color: #fff; }
   .btn-success { background: var(--green); color: #fff; }
+  .btn-dark {
+    background: #111827;
+    color: #fff;
+    border: 1px solid #111827;
+  }
+  .btn-dark:hover { background: #0b1220; border-color: #0b1220; }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
 
   /* ─── STAT CARDS ─── */
@@ -448,6 +454,14 @@
     font-size: 13px; color: var(--ink2);
     cursor: pointer; outline: none;
     font-family: 'DM Sans', sans-serif;
+  }
+  .input {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--ink2);
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
   }
 
   /* ─── RULES SECTION ─── */

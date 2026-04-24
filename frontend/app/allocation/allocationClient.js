@@ -341,22 +341,10 @@ export default function AllocationClient() {
             <button className="btn btn-success btn-sm" type="button" onClick={runAllocationOnly} disabled={runBusy || busy}>
               {runBusy ? "Running…" : "Run allocation"}
             </button>
-            <button
-              className="btn btn-sm"
-              style={{ background: "#111827", color: "#fff", border: "1px solid #111827" }}
-              type="button"
-              onClick={exportAllExcel}
-              disabled={busy || exportBusy}
-            >
+            <button className="btn btn-dark btn-sm" type="button" onClick={exportAllExcel} disabled={busy || exportBusy}>
               {exportBusy ? "Exporting..." : "Export Excel (Male/Female)"}
             </button>
-            <button
-              className="btn btn-sm"
-              style={{ background: "#111827", color: "#fff", border: "1px solid #111827" }}
-              type="button"
-              onClick={exportVacancySummaryCsv}
-              disabled={busy || reportExportBusy}
-            >
+            <button className="btn btn-dark btn-sm" type="button" onClick={exportVacancySummaryCsv} disabled={busy || reportExportBusy}>
               {reportExportBusy ? "Exporting..." : "Export Vacancy Report (CSV)"}
             </button>
             {error ? <span style={{ color: "var(--red)", fontSize: 12, alignSelf: "center" }}>{error}</span> : null}

@@ -24,7 +24,6 @@ export default function Sidebar({ open = false, onClose = () => {} } = {}) {
     <nav className={`sidebar${open ? " open" : ""}`}>
       <div className="sidebar-header">
         <div className="sidebar-brand">
-          <div className="brand-icon">CR</div>
           <div className="brand-name">BEL Result Engine</div>
         </div>
         {/* <div className="brand-sub">SSC CAPFs (GD) · Result System</div> */}
@@ -106,13 +105,6 @@ export default function Sidebar({ open = false, onClose = () => {} } = {}) {
         Logs &amp; Audit
       </NavItem>
 
-      <div className="sidebar-footer">
-        <div className="user-avatar">SA</div>
-        <div className="user-info">
-          <div className="user-name">Super Admin</div>
-          <div className="user-role">Full access · v2.5.1</div>
-        </div>
-      </div>
     </nav>
   );
 }
