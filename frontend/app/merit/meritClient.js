@@ -128,7 +128,14 @@ export default function MeritClient() {
         exportPage += 1;
       } while (allRows.length < total);
 
-      const ordered = [...allRows].sort((a, b) => {
+      // Safety dedupe by candidate id to avoid repeated rows from transient pagination/order shifts.
+      const dedupMap = new Map();
+      for (const r of allRows) {
+        if (r?.id) dedupMap.set(String(r.id), r);
+      }
+      const dedupedRows = Array.from(dedupMap.values());
+
+      const ordered = [...dedupedRows].sort((a, b) => {
         const ar = a.meritRank ?? 999999999;
         const br = b.meritRank ?? 999999999;
         if (ar !== br) return ar - br;

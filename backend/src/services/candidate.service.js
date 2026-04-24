@@ -134,7 +134,17 @@ export const candidateService = {
           "candidates.raw_data as rawData",
           ...(includeEval ? ["cre.qualified as qualified", "cre.reasons as ruleReasons", "cre.summary as ruleSummary"] : []),
         ])
-        .orderBy("candidates.updated_at", "desc")
+        .modify((qb) => {
+          // Deterministic order prevents duplicate/missing rows across paginated export fetches.
+          if (includeEval) {
+            qb
+              .orderByRaw("candidates.merit_rank ASC NULLS LAST")
+              .orderByRaw("candidates.final_marks DESC NULLS LAST")
+              .orderBy("candidates.id", "asc");
+          } else {
+            qb.orderBy("candidates.updated_at", "desc").orderBy("candidates.id", "asc");
+          }
+        })
         .offset((page - 1) * pageSize)
         .limit(pageSize),
     ]);

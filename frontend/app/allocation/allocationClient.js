@@ -64,30 +64,9 @@ export default function AllocationClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function toCsvValue(value) {
-    if (value == null) return "";
-    const s = typeof value === "string" ? value : String(value);
-    if (s.includes('"') || s.includes(",") || s.includes("\n") || s.includes("\r")) {
-      return `"${s.replace(/"/g, '""')}"`;
-    }
-    return s;
-  }
-
-  function downloadCsv(filename, rows) {
-    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
   function exportFilename() {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    return `force-allocation-${stamp}.csv`;
+    return `force-allocation-${stamp}.xlsx`;
   }
 
   async function fetchAllRows() {
@@ -115,43 +94,50 @@ export default function AllocationClient() {
     return out;
   }
 
-  async function exportAllCsv() {
+  async function exportAllExcel() {
     setExportBusy(true);
     setError("");
     try {
       const allRows = await fetchAllRows();
-      const header = [
-        "meritRank",
-        "rollNo",
-        "name",
-        "forceCode",
-        "vacancyRowKey",
-        "stateCode",
-        "area",
-        "categoryAllocated",
-        "stateAllocated",
-        "districtAllocated",
-      ];
-      const lines = [
-        header.map(toCsvValue).join(","),
-        ...allRows.map((r) =>
-          [
-            r.meritRank,
-            r.rollNo,
-            r.name,
-            r.forceCode,
-            r.vacancyRowKey,
-            r.stateCode,
-            r.area,
-            r.categoryAllocated,
-            r.stateAllocated,
-            r.districtAllocated,
-          ]
-            .map(toCsvValue)
-            .join(",")
-        ),
-      ];
-      downloadCsv(exportFilename(), lines);
+      const cutoffByStateCategory = new Map();
+      for (const r of allRows) {
+        const key = `${String(r?.stateCode ?? r?.stateAllocated ?? "").trim()}|${String(r?.categoryAllocated ?? "").trim().toUpperCase()}`;
+        if (!key) continue;
+        const curr = cutoffByStateCategory.get(key);
+        const rank = Number(r?.meritRank ?? Number.MAX_SAFE_INTEGER);
+        if (!curr || rank > Number(curr?.meritRank ?? -1)) cutoffByStateCategory.set(key, r);
+      }
+
+      const rows = allRows.map((r) => {
+        const groupKey = `${String(r?.stateCode ?? r?.stateAllocated ?? "").trim()}|${String(r?.categoryAllocated ?? "").trim().toUpperCase()}`;
+        const cutoff = cutoffByStateCategory.get(groupKey);
+        const coMarks = cutoff?.finalMarks ?? cutoff?.allocationMeta?.candidate?.finalMarks ?? "";
+        const coPartA = cutoff?.partAMarks ?? "";
+        const coPartB = cutoff?.partBMarks ?? "";
+        return {
+          meritRank: r.meritRank ?? "",
+          rollNo: r.rollNo ?? "",
+          name: r.name ?? "",
+          gender: r.gender ?? "",
+          forceCode: r.forceCode ?? "",
+          vacancyRowKey: r.vacancyRowKey ?? "",
+          stateCode: r.stateCode ?? "",
+          area: r.area ?? "",
+          categoryAllocated: r.categoryAllocated ?? "",
+          stateAllocated: r.stateAllocated ?? "",
+          co_marks: coMarks,
+          co_parta: coPartA,
+          co_partb: coPartB,
+        };
+      });
+
+      const maleRows = rows.filter((r) => String(r?.gender ?? "").toUpperCase() === "M" || String(r?.gender ?? "") === "2");
+      const femaleRows = rows.filter((r) => String(r?.gender ?? "").toUpperCase() === "F" || String(r?.gender ?? "") === "1");
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(maleRows), "Male");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(femaleRows), "Female");
+      XLSX.writeFile(wb, exportFilename());
     } catch (e) {
       setError(String(e?.message ?? e));
     } finally {
@@ -248,8 +234,8 @@ export default function AllocationClient() {
             <button className="btn btn-primary btn-sm" type="button" onClick={() => load({ page: 1 })} disabled={busy}>
               {busy ? "Loading…" : "Apply"}
             </button>
-            <button className="btn btn-ghost btn-sm" type="button" onClick={exportAllCsv} disabled={busy || exportBusy}>
-              {exportBusy ? "Exporting..." : "Export CSV (all data)"}
+            <button className="btn btn-ghost btn-sm" type="button" onClick={exportAllExcel} disabled={busy || exportBusy}>
+              {exportBusy ? "Exporting..." : "Export Excel (Male/Female)"}
             </button>
             {error ? <span style={{ color: "var(--red)", fontSize: 12, alignSelf: "center" }}>{error}</span> : null}
           </div>
@@ -268,7 +254,6 @@ export default function AllocationClient() {
                 <th>Area</th>
                 <th>Category Allocated</th>
                 <th>State</th>
-                <th>District</th>
                 <th>Basis</th>
               </tr>
             </thead>
@@ -287,7 +272,6 @@ export default function AllocationClient() {
                     <td className="mono">{r.area ?? "—"}</td>
                     <td className="mono">{r.categoryAllocated}</td>
                     <td>{r.stateAllocated}</td>
-                    <td>{r.districtAllocated}</td>
                     <td>
                       <button
                         type="button"
@@ -300,7 +284,7 @@ export default function AllocationClient() {
                   </tr>
                   {basisOpenId === r.id ? (
                     <tr className="allocation-basis-row">
-                      <td colSpan={11} style={{ padding: 0, borderBottom: "1px solid var(--border)" }}>
+                      <td colSpan={10} style={{ padding: 0, borderBottom: "1px solid var(--border)" }}>
                         <AllocationMetaPanel meta={r.allocationMeta} />
                       </td>
                     </tr>
@@ -309,7 +293,7 @@ export default function AllocationClient() {
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={11} style={{ padding: 16, color: "var(--ink3)" }}>
+                  <td colSpan={10} style={{ padding: 16, color: "var(--ink3)" }}>
                     {busy
                       ? "Loading…"
                       : "No allocations yet. Run allocation above, or the full processing pipeline from Result Upload."}

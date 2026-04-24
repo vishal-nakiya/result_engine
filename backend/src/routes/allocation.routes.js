@@ -61,6 +61,9 @@ allocationRouter.get("/", async (req, res) => {
         "c.category as category",
         "c.gender as gender",
         "c.is_esm as isEsm",
+        "c.final_marks as finalMarks",
+        "c.part_a_marks as partAMarks",
+        "c.part_b_marks as partBMarks",
       ])
       .orderBy("a.merit_rank", "asc")
       .offset((page - 1) * pageSize)
