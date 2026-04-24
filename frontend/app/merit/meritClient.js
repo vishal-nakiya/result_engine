@@ -21,6 +21,74 @@ function formatDob(dobIso) {
   return `${dd}-${mm}-${yyyy}`;
 }
 
+function pickStateCode(row) {
+  const direct = row?.stateCode;
+  if (direct != null && String(direct).trim()) return String(direct).trim();
+  const raw = row?.rawData ?? {};
+  const fromRaw =
+    raw?.state_code ??
+    raw?.s_code ??
+    raw?.statecode_considered_app ??
+    raw?.stateCode ??
+    raw?.statecode ??
+    raw?.candidate_state_code ??
+    raw?.statecodecandidate;
+  return fromRaw == null ? "" : String(fromRaw).trim();
+}
+
+function pickStateName(row) {
+  const directFromDb = String(row?.stateName ?? "").trim();
+  if (directFromDb) return directFromDb;
+
+  const isLikelyStateCode = (value) => {
+    const v = String(value ?? "").trim();
+    if (!v) return false;
+    // Typical code-like values: UP, MH, 09, KA01, etc.
+    if (/^[A-Z0-9-]{1,6}$/.test(v)) return true;
+    // Pure digits are also treated as code IDs.
+    if (/^\d+$/.test(v)) return true;
+    return false;
+  };
+
+  const firstNonCodeText = (...vals) => {
+    for (const val of vals) {
+      const text = String(val ?? "").trim();
+      if (!text) continue;
+      if (isLikelyStateCode(text)) continue;
+      return text;
+    }
+    return "";
+  };
+
+  const raw = row?.rawData ?? {};
+  return firstNonCodeText(
+    row?.state_name,
+    raw?.state_name,
+    raw?.candidate_state_name,
+    raw?.candidate_state,
+    raw?.domicile_state_name,
+    raw?.domicileStateName,
+    raw?.stateName,
+    raw?.state,
+    row?.domicileState,
+    raw?.domicile_state,
+    raw?.domicileState
+  );
+}
+
+function pickCandidateName(row) {
+  const direct = row?.name;
+  if (direct != null && String(direct).trim()) return String(direct).trim();
+  const raw = row?.rawData ?? {};
+  const fromRaw =
+    raw?.name ??
+    raw?.candidate_name ??
+    raw?.candidateName ??
+    raw?.full_name ??
+    raw?.fullname;
+  return fromRaw == null ? "" : String(fromRaw).trim();
+}
+
 export default function MeritClient() {
   const [busy, setBusy] = useState(false);
   const [running, setRunning] = useState(false);
@@ -147,7 +215,9 @@ export default function MeritClient() {
       const sheetRows = ordered.map((r) => ({
         "Merit Rank": r.meritRank ?? "",
         "Roll No": r.rollNo ?? "",
-        Name: r.name ?? "",
+        Name: pickCandidateName(r),
+        "State Code": pickStateCode(r),
+        "State Name": pickStateName(r),
         Category: r.category ?? "",
         Gender: String(r.gender ?? "").slice(0, 1).toUpperCase(),
         DOB: formatDob(r.dob),
@@ -162,12 +232,6 @@ export default function MeritClient() {
           return n == null ? "" : String(n);
         })(),
         Merit: String(r.status ?? "").toLowerCase() === "cleared" ? "Pass" : "Fail",
-        "Why Fail":
-          String(r.status ?? "").toLowerCase() === "cleared"
-            ? ""
-            : Array.isArray(r.ruleReasons) && r.ruleReasons.length
-              ? r.ruleReasons[0]?.code ?? r.ruleReasons[0]?.message ?? ""
-              : "",
       }));
 
       const XLSX = await import("xlsx");
@@ -506,6 +570,8 @@ export default function MeritClient() {
                 <th>Merit Rank</th>
                 <th>Roll No</th>
                 <th>Name</th>
+                <th>State Code</th>
+                <th>State Name</th>
                 <th>Category</th>
                 <th>Gender</th>
                 <th>DOB</th>
@@ -514,7 +580,6 @@ export default function MeritClient() {
                 <th>NCC bonus</th>
                 <th>Final</th>
                 <th>Merit</th>
-                <th>Why fail</th>
                 <th>Details</th>
               </tr>
             </thead>
@@ -526,6 +591,8 @@ export default function MeritClient() {
                   <td>
                     <strong>{r.name}</strong>
                   </td>
+                  <td className="mono">{pickStateCode(r) || "—"}</td>
+                  <td>{pickStateName(r) || "—"}</td>
                   <td className="mono">{r.category ?? "—"}</td>
                   <td>{String(r.gender ?? "").slice(0, 1).toUpperCase() || "—"}</td>
                   <td className="mono">{formatDob(r.dob)}</td>
@@ -546,17 +613,6 @@ export default function MeritClient() {
                       <span className="badge badge-red">Fail</span>
                     )}
                   </td>
-                  <td style={{ maxWidth: 320 }}>
-                    {String(r.status ?? "").toLowerCase() === "cleared" ? (
-                      <span style={{ color: "var(--ink4)" }}>—</span>
-                    ) : Array.isArray(r.ruleReasons) && r.ruleReasons.length ? (
-                      <span className="mono" title={r.ruleReasons.map((x) => x?.code || x?.message).join(" · ")}>
-                        {r.ruleReasons[0]?.code ?? r.ruleReasons[0]?.message ?? "—"}
-                      </span>
-                    ) : (
-                      <span style={{ color: "var(--ink4)" }}>—</span>
-                    )}
-                  </td>
                   <td>
                     <button className="btn btn-ghost btn-sm" type="button" onClick={() => openDetail(r.id)}>
                       View
@@ -566,7 +622,7 @@ export default function MeritClient() {
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={13} style={{ padding: 16, color: "var(--ink3)" }}>
+                  <td colSpan={14} style={{ padding: 16, color: "var(--ink3)" }}>
                     {busy ? "Loading…" : showAll ? "No candidates yet. Upload CSV and run processing." : "No merit pass yet. Upload CSV and run processing."}
                   </td>
                 </tr>

@@ -16,6 +16,7 @@ export default function AllocationClient() {
   const [busy, setBusy] = useState(false);
   const [runBusy, setRunBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
+  const [reportExportBusy, setReportExportBusy] = useState(false);
   const [error, setError] = useState("");
   const [runMsg, setRunMsg] = useState("");
   const [data, setData] = useState({ page: 1, pageSize: 50, total: 0, rows: [] });
@@ -69,6 +70,19 @@ export default function AllocationClient() {
     return `force-allocation-${stamp}.xlsx`;
   }
 
+  function vacancyReportFilename() {
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    return `vacancy-summary-report-${stamp}.csv`;
+  }
+
+  function csvCell(v) {
+    const s = String(v ?? "");
+    if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  }
+
   async function fetchAllRows() {
     const pageSize = 200;
     let page = 1;
@@ -99,6 +113,32 @@ export default function AllocationClient() {
     setError("");
     try {
       const allRows = await fetchAllRows();
+      // Fallback source for cutoff columns from vacancy master rows.
+      const vacancyByRowKey = new Map();
+      {
+        let vPage = 1;
+        const vPageSize = 200;
+        let vTotal = 0;
+        while (true) {
+          const qs = new URLSearchParams();
+          qs.set("page", String(vPage));
+          qs.set("pageSize", String(vPageSize));
+          // eslint-disable-next-line no-await-in-loop
+          const vRes = await fetch(`${apiBase()}/vacancy?${qs.toString()}`);
+          // eslint-disable-next-line no-await-in-loop
+          const vJson = await vRes.json();
+          if (!vRes.ok) break;
+          const rows = Array.isArray(vJson?.rows) ? vJson.rows : [];
+          for (const vr of rows) {
+            const key = String(vr?.key ?? "").trim();
+            if (key) vacancyByRowKey.set(key, vr);
+          }
+          vTotal = Number(vJson?.total ?? vacancyByRowKey.size);
+          if (!rows.length || (vPage * vPageSize) >= vTotal) break;
+          vPage += 1;
+        }
+      }
+
       const cutoffByStateCategoryGender = new Map();
       for (const r of allRows) {
         const key = `${String(r?.stateCode ?? r?.stateAllocated ?? "").trim()}|${String(r?.categoryAllocated ?? "").trim().toUpperCase()}|${String(r?.gender ?? "").trim().toUpperCase()}`;
@@ -111,9 +151,10 @@ export default function AllocationClient() {
       const rows = allRows.map((r) => {
         const groupKey = `${String(r?.stateCode ?? r?.stateAllocated ?? "").trim()}|${String(r?.categoryAllocated ?? "").trim().toUpperCase()}|${String(r?.gender ?? "").trim().toUpperCase()}`;
         const cutoff = cutoffByStateCategoryGender.get(groupKey);
-        const coMarks = cutoff?.finalMarks ?? cutoff?.allocationMeta?.candidate?.finalMarks ?? "";
-        const coPartA = cutoff?.partAMarks ?? "";
-        const coPartB = cutoff?.partBMarks ?? "";
+        const vac = vacancyByRowKey.get(String(r?.vacancyRowKey ?? "").trim());
+        const coMarks = cutoff?.finalMarks ?? cutoff?.allocationMeta?.candidate?.finalMarks ?? vac?.min_marks ?? "";
+        const coPartA = cutoff?.partAMarks ?? vac?.min_marks_parta ?? "";
+        const coPartB = cutoff?.partBMarks ?? vac?.min_marks_partb ?? "";
         return {
           meritRank: r.meritRank ?? "",
           rollNo: r.rollNo ?? "",
@@ -142,6 +183,90 @@ export default function AllocationClient() {
       setError(String(e?.message ?? e));
     } finally {
       setExportBusy(false);
+    }
+  }
+
+  async function exportVacancySummaryCsv() {
+    setReportExportBusy(true);
+    setError("");
+    try {
+      const out = [];
+      let vPage = 1;
+      const vPageSize = 200;
+      let vTotal = 0;
+      while (true) {
+        const qs = new URLSearchParams();
+        qs.set("page", String(vPage));
+        qs.set("pageSize", String(vPageSize));
+        // eslint-disable-next-line no-await-in-loop
+        const vRes = await fetch(`${apiBase()}/vacancy?${qs.toString()}`);
+        // eslint-disable-next-line no-await-in-loop
+        const vJson = await vRes.json();
+        if (!vRes.ok) throw new Error(vJson?.error?.message ?? "Failed to export vacancy summary");
+        const rows = Array.isArray(vJson?.rows) ? vJson.rows : [];
+        out.push(...rows);
+        vTotal = Number(vJson?.total ?? out.length);
+        if (!rows.length || out.length >= vTotal) break;
+        vPage += 1;
+      }
+
+      const filtered = out.filter((r) => {
+        if (forceCode && String(r?.force ?? "").trim().toUpperCase() !== String(forceCode).trim().toUpperCase()) return false;
+        if (state) {
+          const needle = String(state).trim().toLowerCase();
+          const stateName = String(r?.state_name ?? "").toLowerCase();
+          const stateCode = String(r?.state_code ?? "").toLowerCase();
+          if (!stateName.includes(needle) && !stateCode.includes(needle)) return false;
+        }
+        return true;
+      });
+
+      const headers = [
+        "state_code",
+        "state",
+        "gender",
+        "post_code",
+        "force",
+        "area",
+        "category",
+        "category_code",
+        "vacancies",
+        "allocated",
+        "left_vacancy",
+      ];
+      const lines = [headers.join(",")];
+      for (const r of filtered) {
+        const row = [
+          r?.state_code ?? "",
+          r?.state_name ?? "",
+          r?.gender ?? "",
+          r?.post_code ?? "",
+          r?.force ?? "",
+          r?.area ?? "",
+          r?.category ?? "",
+          r?.category_code ?? "",
+          r?.vacancies ?? "",
+          r?.allocated ?? "",
+          r?.left_vacancy ?? "",
+        ];
+        lines.push(row.map(csvCell).join(","));
+      }
+
+      const csv = `${lines.join("\n")}\n`;
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = vacancyReportFilename();
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(String(e?.message ?? e));
+    } finally {
+      setReportExportBusy(false);
     }
   }
 
@@ -236,6 +361,14 @@ export default function AllocationClient() {
             </button>
             <button className="btn btn-ghost btn-sm" type="button" onClick={exportAllExcel} disabled={busy || exportBusy}>
               {exportBusy ? "Exporting..." : "Export Excel (Male/Female)"}
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              type="button"
+              onClick={exportVacancySummaryCsv}
+              disabled={busy || reportExportBusy}
+            >
+              {reportExportBusy ? "Exporting..." : "Export Vacancy Report (CSV)"}
             </button>
             {error ? <span style={{ color: "var(--red)", fontSize: 12, alignSelf: "center" }}>{error}</span> : null}
           </div>

@@ -75,7 +75,7 @@ export const candidateService = {
     const w = buildWhere({ q, category, gender, status });
     const needsCreJoin = Boolean(includeEval) || filterGroupUsesCre(filterGroup);
 
-    let base = k("candidates");
+    let base = k("candidates").leftJoin("states as s", "s.state_code", "candidates.state_code");
     if (needsCreJoin) {
       base = base.leftJoin("candidate_rule_eval as cre", "cre.candidate_id", "candidates.id");
     }
@@ -127,6 +127,7 @@ export const candidateService = {
           "candidates.ncc_bonus_marks as nccBonusMarks",
           "candidates.post_preference as postPreference",
           "candidates.state_code as stateCode",
+          "s.state_name as stateName",
           "candidates.district_code as districtCode",
           "candidates.final_marks as finalMarks",
           "candidates.merit_rank as meritRank",
