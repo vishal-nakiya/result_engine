@@ -99,18 +99,18 @@ export default function AllocationClient() {
     setError("");
     try {
       const allRows = await fetchAllRows();
-      const cutoffByStateCategory = new Map();
+      const cutoffByStateCategoryGender = new Map();
       for (const r of allRows) {
-        const key = `${String(r?.stateCode ?? r?.stateAllocated ?? "").trim()}|${String(r?.categoryAllocated ?? "").trim().toUpperCase()}`;
+        const key = `${String(r?.stateCode ?? r?.stateAllocated ?? "").trim()}|${String(r?.categoryAllocated ?? "").trim().toUpperCase()}|${String(r?.gender ?? "").trim().toUpperCase()}`;
         if (!key) continue;
-        const curr = cutoffByStateCategory.get(key);
+        const curr = cutoffByStateCategoryGender.get(key);
         const rank = Number(r?.meritRank ?? Number.MAX_SAFE_INTEGER);
-        if (!curr || rank > Number(curr?.meritRank ?? -1)) cutoffByStateCategory.set(key, r);
+        if (!curr || rank > Number(curr?.meritRank ?? -1)) cutoffByStateCategoryGender.set(key, r);
       }
 
       const rows = allRows.map((r) => {
-        const groupKey = `${String(r?.stateCode ?? r?.stateAllocated ?? "").trim()}|${String(r?.categoryAllocated ?? "").trim().toUpperCase()}`;
-        const cutoff = cutoffByStateCategory.get(groupKey);
+        const groupKey = `${String(r?.stateCode ?? r?.stateAllocated ?? "").trim()}|${String(r?.categoryAllocated ?? "").trim().toUpperCase()}|${String(r?.gender ?? "").trim().toUpperCase()}`;
+        const cutoff = cutoffByStateCategoryGender.get(groupKey);
         const coMarks = cutoff?.finalMarks ?? cutoff?.allocationMeta?.candidate?.finalMarks ?? "";
         const coPartA = cutoff?.partAMarks ?? "";
         const coPartB = cutoff?.partBMarks ?? "";
