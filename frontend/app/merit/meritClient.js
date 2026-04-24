@@ -421,10 +421,7 @@ export default function MeritClient() {
 
   useEffect(() => {
     load();
-    const btn = document.getElementById("btn-run-pipeline-top");
-    const onClick = () => runPipeline();
-    btn?.addEventListener("click", onClick);
-    return () => btn?.removeEventListener("click", onClick);
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAll, page, pageSize, q, category, gender, meritFilterApplied]);
 
@@ -459,22 +456,7 @@ export default function MeritClient() {
 
   return (
     <div style={{ padding: 28 }}>
-      <MeritFilterPanel
-        group={meritFilterDraft}
-        onChange={setMeritFilterDraft}
-        onApply={applyMeritFilter}
-        onClear={clearMeritFilter}
-        disabled={running}
-        busy={busy}
-      />
-      {meritFilterApplied && meritFilterHasContent(meritFilterApplied) ? (
-        <div style={{ fontSize: 12, color: "var(--ink3)", margin: "-8px 0 14px 2px" }}>
-          <span className="badge badge-green" style={{ marginRight: 8 }}>
-            Global filter on
-          </span>
-          Results are filtered server-side together with the row above.
-        </div>
-      ) : null}
+      {/* Global filter panel intentionally hidden as requested */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
         <button className="btn btn-ghost btn-sm" type="button" onClick={load} disabled={busy || running}>
           ⟳ Refresh
@@ -525,10 +507,16 @@ export default function MeritClient() {
           <option value={200}>200 / page</option>
           <option value={500}>500 / page</option>
         </select>
-        <button className="btn btn-primary btn-sm" type="button" onClick={runPipeline} disabled={running}>
+        <button className="btn btn-success btn-sm" type="button" onClick={runPipeline} disabled={running}>
           {running ? "Running…" : "▶ Run Processing"}
         </button>
-        <button className="btn btn-ghost btn-sm" type="button" onClick={exportAllExcel} disabled={busy || running || exportBusy}>
+        <button
+          className="btn btn-sm"
+          style={{ background: "#111827", color: "#fff", border: "1px solid #111827" }}
+          type="button"
+          onClick={exportAllExcel}
+          disabled={busy || running || exportBusy}
+        >
           {exportBusy ? "Exporting..." : "Export Excel (all records)"}
         </button>
         {error ? <span style={{ color: "var(--red)", fontSize: 12, alignSelf: "center" }}>{error}</span> : null}

@@ -251,12 +251,12 @@ export default function VacancyClient({ initial }) {
                   <th>category</th>
                   <th>category_code</th>
                   <th>vacancies</th>
-                  <th>initial</th>
+                  {/* <th>initial</th>
                   <th>current</th>
                   <th>allocated</th>
-                  <th>left_vacancy</th>
-                  <th>allocated_hc</th>
-                  <th>allocated_hc_prev</th>
+                  <th>left_vacancy</th> */}
+                  {/* <th>allocated_hc</th>
+                  <th>allocated_hc_prev</th> */}
                   <th>key</th>
                 </tr>
               </thead>
@@ -279,12 +279,12 @@ export default function VacancyClient({ initial }) {
                       <td>{fmtCell(r.category)}</td>
                       <td className="mono">{fmtCell(r.category_code)}</td>
                       <td className="mono">{fmtCell(r.vacancies)}</td>
-                      <td className="mono">{fmtCell(r.initial)}</td>
+                      {/* <td className="mono">{fmtCell(r.initial)}</td>
                       <td className="mono">{fmtCell(r.current)}</td>
                       <td className="mono">{fmtCell(r.allocated)}</td>
-                      <td className="mono">{fmtCell(r.left_vacancy)}</td>
-                      <td className="mono">{fmtCell(r.allocated_hc)}</td>
-                      <td className="mono">{fmtCell(r.allocated_hc_prev)}</td>
+                      <td className="mono">{fmtCell(r.left_vacancy)}</td> */}
+                      {/* <td className="mono">{fmtCell(r.allocated_hc)}</td>
+                      <td className="mono">{fmtCell(r.allocated_hc_prev)}</td> */}
                       <td className="mono">{fmtCell(r.key)}</td>
                     </tr>
                   ))

@@ -25,7 +25,7 @@ export default function Sidebar({ open = false, onClose = () => {} } = {}) {
       <div className="sidebar-header">
         <div className="sidebar-brand">
           <div className="brand-icon">CR</div>
-          <div className="brand-name">ResultPro</div>
+          <div className="brand-name">BEL Result Engine</div>
         </div>
         {/* <div className="brand-sub">SSC CAPFs (GD) · Result System</div> */}
         <button className="sidebar-close" type="button" onClick={onClose} aria-label="Close menu">

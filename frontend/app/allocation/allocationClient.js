@@ -301,27 +301,6 @@ export default function AllocationClient() {
 
   return (
     <div style={{ padding: 28 }}>
-      <div className="card mb-24">
-        <div className="card-header">
-          <div>
-            <div className="card-title">Run allocation only</div>
-            <div className="card-subtitle">
-              Uses current merit ranks and vacancy data (vacancy_rows when present). Does not recompute merit, PST/PET,
-              or rules. Each row can show an <strong>Allocation basis</strong> snapshot (domicile resolution, master
-              district flags, vacancy row match, pool state vs All-India).
-            </div>
-          </div>
-          <button className="btn btn-primary btn-sm" type="button" onClick={runAllocationOnly} disabled={runBusy || busy}>
-            {runBusy ? "Running…" : "Run allocation"}
-          </button>
-        </div>
-        {runMsg ? (
-          <div className="card-body" style={{ paddingTop: 0 }}>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--green)" }}>{runMsg}</p>
-          </div>
-        ) : null}
-      </div>
-
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
           <div className="filter-row">
@@ -359,11 +338,21 @@ export default function AllocationClient() {
             <button className="btn btn-primary btn-sm" type="button" onClick={() => load({ page: 1 })} disabled={busy}>
               {busy ? "Loading…" : "Apply"}
             </button>
-            <button className="btn btn-ghost btn-sm" type="button" onClick={exportAllExcel} disabled={busy || exportBusy}>
+            <button className="btn btn-success btn-sm" type="button" onClick={runAllocationOnly} disabled={runBusy || busy}>
+              {runBusy ? "Running…" : "Run allocation"}
+            </button>
+            <button
+              className="btn btn-sm"
+              style={{ background: "#111827", color: "#fff", border: "1px solid #111827" }}
+              type="button"
+              onClick={exportAllExcel}
+              disabled={busy || exportBusy}
+            >
               {exportBusy ? "Exporting..." : "Export Excel (Male/Female)"}
             </button>
             <button
-              className="btn btn-ghost btn-sm"
+              className="btn btn-sm"
+              style={{ background: "#111827", color: "#fff", border: "1px solid #111827" }}
               type="button"
               onClick={exportVacancySummaryCsv}
               disabled={busy || reportExportBusy}
@@ -372,6 +361,11 @@ export default function AllocationClient() {
             </button>
             {error ? <span style={{ color: "var(--red)", fontSize: 12, alignSelf: "center" }}>{error}</span> : null}
           </div>
+          {runMsg ? (
+            <div style={{ marginTop: 10 }}>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--green)" }}>{runMsg}</p>
+            </div>
+          ) : null}
         </div>
 
         <div className="table-wrap">
@@ -387,7 +381,7 @@ export default function AllocationClient() {
                 <th>Area</th>
                 <th>Category Allocated</th>
                 <th>State</th>
-                <th>Basis</th>
+                {/* <th>Basis</th> */}
               </tr>
             </thead>
             <tbody>
@@ -405,7 +399,7 @@ export default function AllocationClient() {
                     <td className="mono">{r.area ?? "—"}</td>
                     <td className="mono">{r.categoryAllocated}</td>
                     <td>{r.stateAllocated}</td>
-                    <td>
+                    {/* <td>
                       <button
                         type="button"
                         className="btn btn-ghost btn-sm"
@@ -413,7 +407,7 @@ export default function AllocationClient() {
                       >
                         {basisOpenId === r.id ? "Hide" : "Show"}
                       </button>
-                    </td>
+                    </td> */}
                   </tr>
                   {basisOpenId === r.id ? (
                     <tr className="allocation-basis-row">
