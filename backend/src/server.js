@@ -16,7 +16,8 @@ const maxJsonMb = Number(process.env.MAX_JSON_MB ?? process.env.MAX_UPLOAD_MB ??
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN?.split(",").map((s) => s.trim()) ?? "*",
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
