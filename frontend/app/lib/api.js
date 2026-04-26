@@ -33,24 +33,56 @@ export function apiBase() {
 }
 
 export async function apiGet(path, init) {
-  const res = await fetch(`${apiBase()}${path}`, {
+  const url = `${apiBase()}${path}`;
+  const res = await fetch(url, {
     ...init,
     cache: "no-store",
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+  if (!res.ok) {
+    let details = "";
+    try {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const j = await res.json();
+        details = typeof j?.error?.message === "string" ? j.error.message : JSON.stringify(j);
+      } else {
+        const t = await res.text();
+        details = t.slice(0, 500);
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(`API error ${res.status} for ${url}${details ? ` :: ${details}` : ""}`);
+  }
   return res.json();
 }
 
 export async function apiPost(path, body, init) {
-  const res = await fetch(`${apiBase()}${path}`, {
+  const url = `${apiBase()}${path}`;
+  const res = await fetch(url, {
     method: "POST",
     ...init,
     cache: "no-store",
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     body: JSON.stringify(body ?? {}),
   });
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+  if (!res.ok) {
+    let details = "";
+    try {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const j = await res.json();
+        details = typeof j?.error?.message === "string" ? j.error.message : JSON.stringify(j);
+      } else {
+        const t = await res.text();
+        details = t.slice(0, 500);
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(`API error ${res.status} for ${url}${details ? ` :: ${details}` : ""}`);
+  }
   return res.json();
 }
 
