@@ -2,8 +2,27 @@ export function apiBase() {
   const raw = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
   const s = String(raw).trim();
   if (!s) return "/api";
-  // Normalize trailing slash but preserve protocol form (http://...).
-  return s.endsWith("/") ? s.slice(0, -1) : s;
+  const normalized = s.endsWith("/") ? s.slice(0, -1) : s;
+
+  // On the server, Node's fetch requires absolute URLs.
+  // When user config is relative (e.g. "/api"), derive an origin from env.
+  const isServer = typeof window === "undefined";
+  if (isServer && normalized.startsWith("/")) {
+    const explicitOrigin =
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      process.env.SITE_URL ??
+      process.env.NEXT_PUBLIC_APP_ORIGIN ??
+      process.env.APP_ORIGIN;
+    const vercelUrl = process.env.VERCEL_URL; // e.g. "my-app.vercel.app"
+    const origin = explicitOrigin
+      ? String(explicitOrigin).trim().replace(/\/+$/, "")
+      : vercelUrl
+        ? `https://${String(vercelUrl).trim().replace(/^https?:\/\//, "").replace(/\/+$/, "")}`
+        : "http://localhost:3000";
+    return `${origin}${normalized}`;
+  }
+
+  return normalized;
 }
 
 export async function apiGet(path, init) {
