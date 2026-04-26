@@ -1,8 +1,9 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { apiBase } from "../lib/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:4000/api";
+const API_BASE = apiBase();
 
 const RULE_DEFS = {
   eligibility: {

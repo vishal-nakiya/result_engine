@@ -1,5 +1,9 @@
 export function apiBase() {
-  return process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:4000/api";
+  const raw = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
+  const s = String(raw).trim();
+  if (!s) return "/api";
+  // Normalize trailing slash but preserve protocol form (http://...).
+  return s.endsWith("/") ? s.slice(0, -1) : s;
 }
 
 export async function apiGet(path, init) {
