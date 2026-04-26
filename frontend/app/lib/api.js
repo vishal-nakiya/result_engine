@@ -8,6 +8,13 @@ export function apiBase() {
   // When user config is relative (e.g. "/api"), derive an origin from env.
   const isServer = typeof window === "undefined";
   if (isServer && normalized.startsWith("/")) {
+    // Prefer an explicit server-only backend base to avoid relying on self-origin rewrites.
+    // Example: "http://140.245.20.98:4500/api"
+    const serverApiBase = process.env.API_SERVER_BASE ?? process.env.BACKEND_API_BASE;
+    if (serverApiBase && String(serverApiBase).trim()) {
+      return String(serverApiBase).trim().replace(/\/+$/, "");
+    }
+
     const explicitOrigin =
       process.env.NEXT_PUBLIC_SITE_URL ??
       process.env.SITE_URL ??
