@@ -683,7 +683,7 @@
 //         processed,
 //       });
 
-//       // ── Force allocation ─────────────────────────────────────────────────────
+//       // ── Allocation ─────────────────────────────────────────────────────
 //       const allocationResult = await allocationService.allocateFromMerit();
 //       await logService.write("info", "Allocation completed", allocationResult);
 
@@ -1387,7 +1387,7 @@ export const processingService = {
         processed,
       });
 
-      // ── Force allocation ─────────────────────────────────────────────────────
+      // ── Allocation ─────────────────────────────────────────────────────
       const allocationResult = await allocationService.allocateFromMerit();
       await logService.write("info", "Allocation completed", allocationResult);
 

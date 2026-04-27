@@ -85,7 +85,7 @@ export default function Sidebar({ open = false, onClose = () => {} } = {}) {
           <rect x="2" y="4" width="16" height="12" rx="2" />
           <path d="M8 4v12M14 4v12M2 10h16" />
         </svg>
-        Force Allocation
+        Allocation
       </NavItem>
 
       <div className="nav-section-label">System</div>

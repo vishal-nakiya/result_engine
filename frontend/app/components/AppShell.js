@@ -73,7 +73,7 @@ export default function AppShell({ children }) {
               <li>Go to <strong>Result Upload</strong> and upload stage-wise result files.</li>
               <li>Check <strong>Validation Rules</strong> to verify system logic.</li>
               <li>Open <strong>Merit List</strong> to review ranking and cleared candidates.</li>
-              <li>Use <strong>Force Allocation</strong> to run allocation and export results.</li>
+              <li>Use <strong>Allocation</strong> to run allocation and export results.</li>
             </ul>
             <div className="manual-modal-actions">
               <button className="btn btn-ghost btn-sm" type="button" onClick={closeManual}>

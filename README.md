@@ -1,6 +1,6 @@
 # CTGD Result Processing System
 
-Production-ready monorepo for CTGD result ingestion, SOP-based processing, merit generation, and force allocation.
+Production-ready monorepo for CTGD result ingestion, SOP-based processing, merit generation, and Allocation.
 
 ## Prerequisites
 

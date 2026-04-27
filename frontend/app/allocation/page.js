@@ -6,7 +6,7 @@ export default function AllocationPage() {
     <AppShell>
       <div className="topbar">
         <div className="topbar-left">
-          <div className="topbar-title">Force Allocation</div>
+          <div className="topbar-title">Allocation</div>
           <div className="topbar-sub">
             View results · use Run allocation on this page to refresh without rerunning the full pipeline.
           </div>

@@ -9,7 +9,7 @@ processRouter.post("/run", async (_req, res) => {
   res.json(result);
 });
 
-/** Re-run force allocation only (uses current merit_rank + vacancy_rows / legacy vacancy). */
+/** Re-run Allocation only (uses current merit_rank + vacancy_rows / legacy vacancy). */
 processRouter.post("/allocate-only", async (_req, res) => {
   try {
     const result = await allocationService.allocateFromMerit();

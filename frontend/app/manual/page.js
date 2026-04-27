@@ -34,9 +34,9 @@ const steps = [
     ],
   },
   {
-    title: "5) Run Force Allocation",
+    title: "5) Run Allocation",
     points: [
-      "Open Force Allocation and click Run allocation.",
+      "Open Allocation and click Run allocation.",
       "Review allocated force/state/district for each candidate.",
       "Use Export CSV to download the final allocation report.",
     ],
@@ -59,7 +59,7 @@ export default function ManualPage() {
           <div className="alert-body">
             <div className="alert-title">Recommended flow</div>
             <div className="alert-text">
-              Follow the order below from data upload to final force allocation. This avoids missing dependencies.
+              Follow the order below from data upload to final Allocation. This avoids missing dependencies.
             </div>
           </div>
         </div>

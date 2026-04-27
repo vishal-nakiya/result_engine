@@ -661,7 +661,7 @@
   .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .legend-val { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink3); }
 
-  /* ─── FORCE ALLOCATION GRID ─── */
+    /* ─── Allocation GRID ─── */
   .force-grid {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
   }
